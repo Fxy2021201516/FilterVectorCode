@@ -193,7 +193,7 @@ int main(int argc, char **argv)
    }
 
    // fs::create_directories(result_path_prefix);
-   std::ofstream out(result_path_prefix + "result.csv");
+   std::ofstream out(result_path_prefix + "result_avg.csv");
    out << "L,Cmps,QPS,Recall" << std::endl;
    for (auto i = 0; i < Lsearch_list.size(); i++)
       out << Lsearch_list[i] << "," << all_cmps[i] << "," << all_qpss[i] << "," << all_recalls[i] / 100.00 << std::endl;

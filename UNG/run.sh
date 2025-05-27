@@ -1,111 +1,144 @@
 #!/bin/bash
 
-# 定义数据集路径变量
-DATASET="arxiv"
-DATA_DIR="../UNG_data/arxiv" 
-NUM_QUERY_SETS=1
-
-# 删除 build 文件夹及其所有内容
-if [ -d "build_arxiv" ]; then
-    echo "删除 build_arxiv 文件夹及其内容..."
-    rm -rf build
-fi
-
-# # 下载并解压数据
-# # cd $DATA_DIR
-# # tar -zxvf arxiv.tar.gz
-# # cd ..
-# # cd UNG
-
-# 创建 build 目录并编译代码
-mkdir -p build_arxiv
-cd build_arxiv
-cmake -DCMAKE_BUILD_TYPE=Release ../codes/ # Build with Release mode
-make -j
-cd ..
-
-
-# # 转换arxiv_base数据格式
-# ./build_arxiv/tools/fvecs_to_bin --data_type float --input_file $DATA_DIR/arxiv/arxiv_base.fvecs --output_file $DATA_DIR/arxiv/arxiv_base.bin
-
-# 构建index + 生成查询任务文件
-./build_arxiv/apps/build_UNG_index \
-    --data_type float --dist_fn L2 --num_threads 32 --max_degree 32 --Lbuild 100 --alpha 1.2 \
-    --base_bin_file $DATA_DIR/arxiv/arxiv_base.bin --base_label_file $DATA_DIR/arxiv/arxiv_base_labels.txt \
-    --index_path_prefix $DATA_DIR/index_files/UNG/arxiv_base_labels_general_cross6_R32_L100_A1.2/ \
-    --scenario general --num_cross_edges 6 \
-    --generate_query true --query_file_path $DATA_DIR/arxiv/arxiv_query \
-    --dataset $DATASET > arxiv_build_index_output.txt 2>&1
-
-
-# 转换arxiv_query数据格式
-for ((i=1; i<=$NUM_QUERY_SETS; i++))
-do
-    INPUT_FILE="$DATA_DIR/arxiv/arxiv_query/arxiv_query.fvecs"
-    OUTPUT_FILE="$DATA_DIR/arxiv/arxiv_query/arxiv_query.bin"
-    
-    echo "Processing set $i: $INPUT_FILE -> $OUTPUT_FILE"
-    ./build_arxiv/tools/fvecs_to_bin --data_type float --input_file "$INPUT_FILE" --output_file "$OUTPUT_FILE"
+# Step1:解析命令行参数
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dataset)
+            DATASET="$2"
+            shift 2
+            ;;
+        --data_dir)
+            DATA_DIR="$2"
+            shift 2
+            ;;
+        --output_dir)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        --num_query_sets)
+            NUM_QUERY_SETS="$2"
+            shift 2
+            ;;
+        --max_degree)
+            MAX_DEGREE="$2"
+            shift 2
+            ;;
+        --Lbuild)
+            LBUILD="$2"
+            shift 2
+            ;;
+        --alpha)
+            ALPHA="$2"
+            shift 2
+            ;;
+        --num_cross_edges)
+            NUM_CROSS_EDGES="$2"
+            shift 2
+            ;;
+        --num_entry_points)
+            NUM_ENTRY_POINTS="$2"
+            shift 2
+            ;;
+        --Lsearch_values)
+            LSEARCH_VALUES="$2"
+            shift 2
+            ;;
+        --build_dir)
+            BUILD_DIR="$2"
+            shift 2
+            ;;
+        *)
+            echo "未知参数: $1"
+            exit 1
+            ;;
+    esac
 done
 
-# 生成gt
-for ((i=1; i<=$NUM_QUERY_SETS; i++))
+# Step2:删除旧的构建文件夹
+if [ -d "$BUILD_DIR" ]; then
+    echo "删除 $BUILD_DIR 文件夹及其内容..."
+    rm -rf "$BUILD_DIR"
+fi
+
+# Step3:创建构建目录并编译代码
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR" || exit
+cmake -DCMAKE_BUILD_TYPE=Release ../codes/
+make -j
+cd .. || exit
+
+OUTPUT_DIR="${OUTPUT_DIR}/${DATASET}_dataset_${DATASET}_query${NUM_QUERY_SETS}_M${MAX_DEGREE}_LB${LBUILD}_alpha${ALPHA}_C${NUM_CROSS_EDGES}_EP${NUM_ENTRY_POINTS}_Lsearch${LSEARCH_VALUES}"
+mkdir -p "$OUTPUT_DIR"
+OTHER_DIR="$OUTPUT_DIR/others"
+mkdir -p "$OTHER_DIR"
+
+# Step4:转换基础数据格式
+./"$BUILD_DIR"/tools/fvecs_to_bin --data_type float --input_file "$DATA_DIR/${DATASET}_base.fvecs" --output_file "$DATA_DIR/${DATASET}_base.bin"
+
+# Step5:构建index + 生成查询任务文件
+./"$BUILD_DIR"/apps/build_UNG_index \
+    --data_type float --dist_fn L2 --num_threads 32 --max_degree "$MAX_DEGREE" --Lbuild "$LBUILD" --alpha "$ALPHA" --num_cross_edges "$NUM_CROSS_EDGES"\
+    --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
+    --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
+    --index_path_prefix "$OUTPUT_DIR/index_files/" \
+    --scenario general \
+    --generate_query true --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
+    --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
+
+# Step6:转换查询数据格式
+for ((i=1; i<=NUM_QUERY_SETS; i++))
 do
-    QUERY_DIR="$DATA_DIR/arxiv/arxiv_query"
-    QUERY_BIN="$QUERY_DIR/arxiv_query.bin"
-    QUERY_LABELS="$QUERY_DIR/arxiv_query_labels.txt"
-    GT_FILE="$QUERY_DIR/arxiv_gt_labels_containment.bin"
-    ./build_arxiv/tools/compute_groundtruth \
+    INPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.fvecs"
+    OUTPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin"
+    
+    echo "Processing set $i: $INPUT_FILE -> $OUTPUT_FILE"
+    ./"$BUILD_DIR"/tools/fvecs_to_bin --data_type float --input_file "$INPUT_FILE" --output_file "$OUTPUT_FILE"
+done
+
+# Step7:生成gt
+for ((i=1; i<=NUM_QUERY_SETS; i++))
+do
+    ./"$BUILD_DIR"/tools/compute_groundtruth \
         --data_type float --dist_fn L2 --scenario containment --K 10 --num_threads 32 \
-        --base_bin_file "$DATA_DIR/arxiv/arxiv_base.bin" \
-        --base_label_file "$DATA_DIR/arxiv/arxiv_base_labels.txt" \
-        --query_bin_file "$QUERY_BIN" \
-        --query_label_file "$QUERY_LABELS" \
-        --gt_file "$GT_FILE"
-    # 检查是否成功
-    if [ $? -eq 0 ]; then
-        echo "Successfully generated GT for set $i"
-    else
+        --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
+        --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
+        --query_bin_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin" \
+        --query_label_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query_labels.txt" \
+        --gt_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_gt_labels_containment.bin"
+    
+    if [ $? -ne 0 ]; then
         echo "Error generating GT for set $i"
         exit 1
     fi
 done
 echo -e "\nAll ground truth files generated successfully!"
 
-
-
-RESULT_DIR="$DATA_DIR/results"
+# Step8:执行搜索
+RESULT_DIR="$OUTPUT_DIR/results"
 mkdir -p "$RESULT_DIR"
 
-for ((i=1; i<=$NUM_QUERY_SETS; i++))
+for ((i=1; i<=NUM_QUERY_SETS; i++))
 do    
     echo -e "\nRunning iteration $i with query set $QUERY_DIR..."
-    QUERY_DIR="$DATA_DIR/arxiv/arxiv_query"
+    QUERY_DIR="$DATA_DIR/query_${NUM_QUERY_SETS}"
 
-    # 创建当前查询集的结果目录
-    CURRENT_RESULT_DIR="$RESULT_DIR/arxiv_query"
-    mkdir -p "$CURRENT_RESULT_DIR"
-
-    ./build_arxiv/apps/search_UNG_index \
-        --data_type float --dist_fn L2 --num_threads 32 --K 10 --is_new_method true --is_ori_ung true\
-        --base_bin_file "$DATA_DIR/arxiv/arxiv_base.bin" \
-        --base_label_file "$DATA_DIR/arxiv/arxiv_base_labels.txt" \
-        --query_bin_file "$QUERY_DIR/arxiv_query.bin" \
-        --query_label_file "$QUERY_DIR/arxiv_query_labels.txt" \
-        --gt_file "$QUERY_DIR/arxiv_gt_labels_containment.bin" \
-        --index_path_prefix "$DATA_DIR/index_files/UNG/arxiv_base_labels_general_cross6_R32_L100_A1.2/" \
-        --result_path_prefix "$CURRENT_RESULT_DIR/arxiv_" \
+    ./"$BUILD_DIR"/apps/search_UNG_index \
+        --data_type float --dist_fn L2 --num_threads 32 --K 10 --is_new_method true --is_ori_ung true \
+        --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
+        --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
+        --query_bin_file "$QUERY_DIR/${DATASET}_query.bin" \
+        --query_label_file "$QUERY_DIR/${DATASET}_query_labels.txt" \
+        --gt_file "$QUERY_DIR/${DATASET}_gt_labels_containment.bin" \
+        --index_path_prefix "$OUTPUT_DIR/index_files/" \
+        --result_path_prefix "$RESULT_DIR/" \
         --scenario containment \
-        --num_entry_points 16 \
-        --Lsearch 10 15 20 25 30 35 40 45 > arxiv_search_output.txt 2>&1
-    # 检查执行状态
-    if [ $? -eq 0 ]; then
-        echo "Successfully completed iteration $i"
-    else
+        --num_entry_points "$NUM_ENTRY_POINTS" \
+        --Lsearch $LSEARCH_VALUES > "$OTHER_DIR/${DATASET}_search_output.txt" 2>&1
+    
+    if [ $? -ne 0 ]; then
         echo "Error in iteration $i"
         exit 1
     fi
 done
 
-echo -e "\nAll search iterations completed successfully!"
-
+echo -e "\nAll search iterations completed successfully for dataset $DATASET!"

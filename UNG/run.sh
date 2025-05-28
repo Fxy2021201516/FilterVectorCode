@@ -47,6 +47,18 @@ while [[ $# -gt 0 ]]; do
             BUILD_DIR="$2"
             shift 2
             ;;
+         --num_threads)
+            NUM_THREADS="$2"
+            shift 2
+            ;;
+         --K)
+            K="$2"
+            shift 2
+            ;;
+         --num_repeats)
+            NUM_REPEATS="$2"
+            shift 2
+            ;;
         *)
             echo "未知参数: $1"
             exit 1
@@ -71,16 +83,19 @@ OUTPUT_DIR="${OUTPUT_DIR}/${DATASET}_dataset_${DATASET}_query${NUM_QUERY_SETS}_M
 mkdir -p "$OUTPUT_DIR"
 OTHER_DIR="$OUTPUT_DIR/others"
 mkdir -p "$OTHER_DIR"
+RESULT_DIR="$OUTPUT_DIR/results"
+mkdir -p "$RESULT_DIR"
 
 # Step4:转换基础数据格式
 ./"$BUILD_DIR"/tools/fvecs_to_bin --data_type float --input_file "$DATA_DIR/${DATASET}_base.fvecs" --output_file "$DATA_DIR/${DATASET}_base.bin"
 
 # Step5:构建index + 生成查询任务文件
 ./"$BUILD_DIR"/apps/build_UNG_index \
-    --data_type float --dist_fn L2 --num_threads 32 --max_degree "$MAX_DEGREE" --Lbuild "$LBUILD" --alpha "$ALPHA" --num_cross_edges "$NUM_CROSS_EDGES"\
+    --data_type float --dist_fn L2 --num_threads "$NUM_THREADS" --max_degree "$MAX_DEGREE" --Lbuild "$LBUILD" --alpha "$ALPHA" --num_cross_edges "$NUM_CROSS_EDGES"\
     --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
     --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
     --index_path_prefix "$OUTPUT_DIR/index_files/" \
+    --result_path_prefix "$RESULT_DIR/" \
     --scenario general \
     --generate_query true --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
     --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
@@ -99,7 +114,7 @@ done
 for ((i=1; i<=NUM_QUERY_SETS; i++))
 do
     ./"$BUILD_DIR"/tools/compute_groundtruth \
-        --data_type float --dist_fn L2 --scenario containment --K 10 --num_threads 32 \
+        --data_type float --dist_fn L2 --scenario containment --K "$K" --num_threads "$NUM_THREADS" \
         --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
         --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
         --query_bin_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin" \
@@ -111,19 +126,16 @@ do
         exit 1
     fi
 done
-echo -e "\nAll ground truth files generated successfully!"
+echo -e "All ground truth files generated successfully!"
 
 # Step8:执行搜索
-RESULT_DIR="$OUTPUT_DIR/results"
-mkdir -p "$RESULT_DIR"
-
 for ((i=1; i<=NUM_QUERY_SETS; i++))
 do    
-    echo -e "\nRunning iteration $i with query set $QUERY_DIR..."
+    echo -e "\nRunning query$i..."
     QUERY_DIR="$DATA_DIR/query_${NUM_QUERY_SETS}"
 
     ./"$BUILD_DIR"/apps/search_UNG_index \
-        --data_type float --dist_fn L2 --num_threads 32 --K 10 --is_new_method true --is_ori_ung true \
+        --data_type float --dist_fn L2 --num_threads "$NUM_THREADS" --K "$K" --is_new_method true --is_ori_ung true  --num_repeats "$NUM_REPEATS"\
         --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
         --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
         --query_bin_file "$QUERY_DIR/${DATASET}_query.bin" \
@@ -141,4 +153,4 @@ do
     fi
 done
 
-echo -e "\nAll search iterations completed successfully for dataset $DATASET!"
+echo -e "All search iterations completed successfully for dataset $DATASET!"

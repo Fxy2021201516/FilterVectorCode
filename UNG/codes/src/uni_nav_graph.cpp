@@ -65,14 +65,12 @@ namespace ANNS
       _global_graph = std::make_shared<ANNS::Graph>(base_storage->get_num_points());
       std::cout << "begin prepare_group_storages_graphs" << std::endl;
       prepare_group_storages_graphs();
-      _label_processing_time = std::chrono::duration<double, std::milli>(
-                                   std::chrono::high_resolution_clock::now() - start_time)
-                                   .count();
+      _label_processing_time = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start_time).count();
       std::cout << "- Finished in " << _label_processing_time << " ms" << std::endl;
 
       // build graph index for each group
       build_graph_for_all_groups();
-      build_global_vamana_graph();
+      // build_global_vamana_graph();
       build_vector_and_attr_graph();
 
       // for label equality scenario, there is no need for label navigating graph and cross-group edges
@@ -227,8 +225,8 @@ namespace ANNS
 #pragma omp parallel for schedule(dynamic, 1)
          for (auto group_id = 1; group_id <= _num_groups; ++group_id)
          {
-            if (group_id % 100 == 0)
-               std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
+            // if (group_id % 100 == 0)
+            //    std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
 
             // if there are less than _max_degree points in the group, just build a complete graph
             const auto &range = _group_id_to_range[group_id];
@@ -258,7 +256,6 @@ namespace ANNS
          std::cerr << "Error: invalid index name " << _index_name << std::endl;
          exit(-1);
       }
-
       _build_graph_time = std::chrono::duration<double, std::milli>(
                               std::chrono::high_resolution_clock::now() - start_time)
                               .count();
@@ -331,15 +328,14 @@ namespace ANNS
 
       // 统计信息
       _num_attributes = attr_id;
-      auto build_time = std::chrono::duration<double, std::milli>(
-                            std::chrono::high_resolution_clock::now() - start_time)
-                            .count();
-      std::cout << "- Built bipartite graph with " << _num_points << " vectors and "
-                << _num_attributes << " attributes in " << build_time << " ms" << std::endl;
+      _build_vector_attr_graph_time = std::chrono::duration<double, std::milli>(
+                                          std::chrono::high_resolution_clock::now() - start_time)
+                                          .count();
+      std::cout << "- Finish in " << _build_vector_attr_graph_time << " ms" << std::endl;
       std::cout << "- Total edges: " << count_graph_edges() << std::endl;
 
       // 可选：保存图结构供调试
-      save_bipartite_graph_info();
+      // save_bipartite_graph_info();
    }
 
    // fxy_add: 计算向量-属性二分图的边数
@@ -819,10 +815,10 @@ namespace ANNS
       }
 
       // Step 5: 输出时间
-      auto _coverage_ratio_time = std::chrono::duration<double, std::milli>(
-                                      std::chrono::high_resolution_clock::now() - start_time)
-                                      .count();
-      std::cout << "- Coverage ratio calculated in " << _coverage_ratio_time << " ms" << std::endl;
+      _cal_coverage_ratio_time = std::chrono::duration<double, std::milli>(
+                                     std::chrono::high_resolution_clock::now() - start_time)
+                                     .count();
+      std::cout << "- Finish in " << _cal_coverage_ratio_time << " ms" << std::endl;
 
       // // step4：递归存储所有孩子的覆盖比率
       // std::ofstream outfile0("LNG_coverage_ratio.txt");
@@ -850,9 +846,12 @@ namespace ANNS
    // fxy_add: 计算所有节点的后代数量，并更新_lng_descendants_num和_lng_descendants
    void UniNavGraph::get_descendants_info()
    {
+      std::cout << "Calculating descendants info..." << std::endl;
       using PairType = std::pair<IdxType, int>;
       std::vector<PairType> descendants_num(_num_groups);                    // 存储后代个数
       std::vector<std::unordered_set<IdxType>> descendants_set(_num_groups); // 存储后代集合
+
+      auto start_time = std::chrono::high_resolution_clock::now();
 
 #pragma omp parallel for
       for (IdxType group_id = 1; group_id <= _num_groups; ++group_id)
@@ -904,50 +903,16 @@ namespace ANNS
          total_descendants += pair.second;
       }
       _label_nav_graph->avg_descendants = _num_groups > 0 ? total_descendants / _num_groups : 0;
-      std::cout << "Descendants Info" << std::endl;
+      _cal_descendants_time = std::chrono::duration<double, std::milli>(
+                                  std::chrono::high_resolution_clock::now() - start_time)
+                                  .count();
+      std::cout << "- Finish in " << _cal_descendants_time << " ms" << std::endl;
       std::cout << "- Number of groups: " << _num_groups << std::endl;
       std::cout << "- Average number of descendants per group: " << _label_nav_graph->avg_descendants << std::endl;
-
-      // 输出到文件
-      std::ofstream outfile("group_descendants_stats.txt");
-      if (outfile.is_open())
-      {
-         outfile << "Number of groups: " << _num_groups << "\n";
-         outfile << "Average number of descendants per group: " << _label_nav_graph->avg_descendants << "\n";
-         outfile.close();
-         std::cout << "- Statistics written to 'group_descendants_stats.txt'" << std::endl;
-      }
    }
 
    // =====================================end 计算LNG中后代的个数=========================================
 
-   /*void UniNavGraph::build_label_nav_graph() {
-       std::cout << "Building label navigation graph... " << std::endl;
-       auto start_time = std::chrono::high_resolution_clock::now();
-       _label_nav_graph = std::make_shared<LabelNavGraph>(_num_groups+1);
-       omp_set_num_threads(_num_threads);
-
-       // obtain out-neighbors
-       #pragma omp parallel for schedule(dynamic, 256)
-       for (auto group_id=1; group_id<=_num_groups; ++group_id) {
-           if (group_id % 100 == 0)
-               std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
-           std::vector<IdxType> min_super_set_ids;
-           get_min_super_sets(_group_id_to_label_set[group_id], min_super_set_ids, true);
-           _label_nav_graph->out_neighbors[group_id] = min_super_set_ids;
-       }
-
-       // obtain in-neighbors
-       for (auto group_id=1; group_id<=_num_groups; ++group_id)
-           for (auto each : _label_nav_graph->out_neighbors[group_id])
-               _label_nav_graph->in_neighbors[each].emplace_back(group_id);
-
-       _build_LNG_time = std::chrono::duration<double, std::milli>(
-                         std::chrono::high_resolution_clock::now() - start_time).count();
-       std::cout << "\r- Finished in " << _build_LNG_time << " ms" << std::endl;
-   }*/
-
-   // fxy_add : 打印信息的build_label_nav_graph
    void UniNavGraph::build_label_nav_graph()
    {
       std::cout << "Building label navigation graph... " << std::endl;
@@ -955,74 +920,97 @@ namespace ANNS
       _label_nav_graph = std::make_shared<LabelNavGraph>(_num_groups + 1);
       omp_set_num_threads(_num_threads);
 
-      std::ofstream outfile("lng_structure.txt");
-      if (!outfile.is_open())
-      {
-         std::cerr << "Error: Could not open lng_structure.txt for writing!" << std::endl;
-         return;
-      }
-      outfile << "Label Navigation Graph (LNG) Structure\n";
-      outfile << "=====================================\n";
-      outfile << "Format: [GroupID] {LabelSet} -> [OutNeighbor1]{LabelSet}, [OutNeighbor2]{LabelSet}, ...\n\n";
-
 // obtain out-neighbors
 #pragma omp parallel for schedule(dynamic, 256)
       for (auto group_id = 1; group_id <= _num_groups; ++group_id)
       {
-         if (group_id % 100 == 0)
-         {
-#pragma omp critical
-            std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
-         }
-
+         // if (group_id % 100 == 0)
+         //    std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
          std::vector<IdxType> min_super_set_ids;
          get_min_super_sets(_group_id_to_label_set[group_id], min_super_set_ids, true);
          _label_nav_graph->out_neighbors[group_id] = min_super_set_ids;
-         _label_nav_graph->out_degree[group_id] = min_super_set_ids.size();
-
-#pragma omp critical
-         {
-            outfile << "[" << group_id << "] {";
-            // 打印标签集
-            for (const auto &label : _group_id_to_label_set[group_id])
-               outfile << label << ",";
-            outfile << "} -> ";
-
-            // 打印出边（包含目标节点的标签集）
-            for (size_t i = 0; i < min_super_set_ids.size(); ++i)
-            {
-               auto target_id = min_super_set_ids[i];
-               outfile << "[" << target_id << "] {";
-               // 打印目标节点的标签集
-               for (const auto &label : _group_id_to_label_set[target_id])
-               {
-                  outfile << label << ",";
-               }
-               outfile << "}";
-               if (i != min_super_set_ids.size() - 1)
-                  outfile << ", ";
-            }
-            outfile << "\n";
-         }
       }
 
-      // obtain in-neighbors (不需要打印入边，但保留原有逻辑)
+      // obtain in-neighbors
       for (auto group_id = 1; group_id <= _num_groups; ++group_id)
-      {
          for (auto each : _label_nav_graph->out_neighbors[group_id])
-         {
             _label_nav_graph->in_neighbors[each].emplace_back(group_id);
-            _label_nav_graph->in_degree[group_id] += 1;
-         }
-      }
 
-      // outfile.close();
       _build_LNG_time = std::chrono::duration<double, std::milli>(
                             std::chrono::high_resolution_clock::now() - start_time)
                             .count();
       std::cout << "\r- Finished in " << _build_LNG_time << " ms" << std::endl;
-      std::cout << "- LNG structure saved to lng_structure.txt" << std::endl;
    }
+
+   // fxy_add : 打印信息的build_label_nav_graph
+   //    void UniNavGraph::build_label_nav_graph()
+   //    {
+   //       std::cout << "Building label navigation graph... " << std::endl;
+   //       auto start_time = std::chrono::high_resolution_clock::now();
+   //       _label_nav_graph = std::make_shared<LabelNavGraph>(_num_groups + 1);
+   //       omp_set_num_threads(_num_threads);
+   //       std::ofstream outfile("lng_structure.txt");
+   //       if (!outfile.is_open())
+   //       {
+   //          std::cerr << "Error: Could not open lng_structure.txt for writing!" << std::endl;
+   //          return;
+   //       }
+   //       outfile << "Label Navigation Graph (LNG) Structure\n";
+   //       outfile << "=====================================\n";
+   //       outfile << "Format: [GroupID] {LabelSet} -> [OutNeighbor1]{LabelSet}, [OutNeighbor2]{LabelSet}, ...\n\n";
+   // // obtain out-neighbors
+   // #pragma omp parallel for schedule(dynamic, 256)
+   //       for (auto group_id = 1; group_id <= _num_groups; ++group_id)
+   //       {
+   //          if (group_id % 100 == 0)
+   //          {
+   // #pragma omp critical
+   //             std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
+   //          }
+   //          std::vector<IdxType> min_super_set_ids;
+   //          get_min_super_sets(_group_id_to_label_set[group_id], min_super_set_ids, true);
+   //          _label_nav_graph->out_neighbors[group_id] = min_super_set_ids;
+   //          _label_nav_graph->out_degree[group_id] = min_super_set_ids.size();
+   // #pragma omp critical
+   //          {
+   //             outfile << "[" << group_id << "] {";
+   //             // 打印标签集
+   //             for (const auto &label : _group_id_to_label_set[group_id])
+   //                outfile << label << ",";
+   //             outfile << "} -> ";
+   //             // 打印出边（包含目标节点的标签集）
+   //             for (size_t i = 0; i < min_super_set_ids.size(); ++i)
+   //             {
+   //                auto target_id = min_super_set_ids[i];
+   //                outfile << "[" << target_id << "] {";
+   //                // 打印目标节点的标签集
+   //                for (const auto &label : _group_id_to_label_set[target_id])
+   //                {
+   //                   outfile << label << ",";
+   //                }
+   //                outfile << "}";
+   //                if (i != min_super_set_ids.size() - 1)
+   //                   outfile << ", ";
+   //             }
+   //             outfile << "\n";
+   //          }
+   //       }
+   //       // obtain in-neighbors (不需要打印入边，但保留原有逻辑)
+   //       for (auto group_id = 1; group_id <= _num_groups; ++group_id)
+   //       {
+   //          for (auto each : _label_nav_graph->out_neighbors[group_id])
+   //          {
+   //             _label_nav_graph->in_neighbors[each].emplace_back(group_id);
+   //             _label_nav_graph->in_degree[group_id] += 1;
+   //          }
+   //       }
+   //       // outfile.close();
+   //       _build_LNG_time = std::chrono::duration<double, std::milli>(
+   //                             std::chrono::high_resolution_clock::now() - start_time)
+   //                             .count();
+   //       std::cout << "\r- Finished in " << _build_LNG_time << " ms" << std::endl;
+   //       std::cout << "- LNG structure saved to lng_structure.txt" << std::endl;
+   //    }
 
    // 将分组内的局部索引转换为全局索引
    void UniNavGraph::add_offset_for_uni_nav_graph()
@@ -1057,8 +1045,8 @@ namespace ANNS
       {
          if (_label_nav_graph->in_neighbors[group_id].size() > 0)
          {
-            if (group_id % 100 == 0)
-               std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
+            // if (group_id % 100 == 0)
+            //    std::cout << "\r" << (100.0 * group_id) / _num_groups << "%" << std::flush;
             IdxType offset = _group_id_to_range[group_id].first;
 
             // query vamana index
@@ -1631,7 +1619,7 @@ namespace ANNS
       return num_cmps;
    }
 
-   void UniNavGraph::save(std::string index_path_prefix)
+   void UniNavGraph::save(std::string index_path_prefix, std::string results_path_prefix)
    {
       fs::create_directories(index_path_prefix);
       auto start_time = std::chrono::high_resolution_clock::now();
@@ -1648,16 +1636,33 @@ namespace ANNS
       meta_data["build_num_threads"] = std::to_string(_num_threads);
       meta_data["scenario"] = _scenario;
       meta_data["num_cross_edges"] = std::to_string(_num_cross_edges);
-      meta_data["index_time(ms)"] = std::to_string(_index_time);
-      meta_data["label_processing_time(ms)"] = std::to_string(_label_processing_time);
-      meta_data["build_graph_time(ms)"] = std::to_string(_build_graph_time);
-      meta_data["build_LNG_time(ms)"] = std::to_string(_build_LNG_time);
-      meta_data["build_cross_edges_time(ms)"] = std::to_string(_build_cross_edges_time);
       meta_data["graph_num_edges"] = std::to_string(_graph_num_edges);
       meta_data["LNG_num_edges"] = std::to_string(_LNG_num_edges);
       meta_data["index_size(MB)"] = std::to_string(_index_size);
+      meta_data["index_time(ms)"] = std::to_string(_index_time);
+      meta_data["label_processing_time(ms)"] = std::to_string(_label_processing_time);
+      meta_data["build_graph_time(ms)"] = std::to_string(_build_graph_time);
+      meta_data["build_vector_attr_graph_time(ms)"] = std::to_string(_build_vector_attr_graph_time);
+      meta_data["cal_descendants_time(ms)"] = std::to_string(_cal_descendants_time);
+      meta_data["cal_coverage_ratio_time(ms)"] = std::to_string(_cal_coverage_ratio_time);
+      meta_data["build_LNG_time(ms)"] = std::to_string(_build_LNG_time);
+      meta_data["build_cross_edges_time(ms)"] = std::to_string(_build_cross_edges_time);
       std::string meta_filename = index_path_prefix + "meta";
       write_kv_file(meta_filename, meta_data);
+
+      // save build_time to csv
+      std::string build_time_filename = results_path_prefix + "build_time.csv";
+      std::ofstream build_time_file(build_time_filename);
+      build_time_file << "Index Name,Build Time (ms)\n";
+      build_time_file << "index_name" << "," << _index_time << "\n";
+      build_time_file << "label_processing_time" << "," << _label_processing_time << "\n";
+      build_time_file << "build_graph_time" << "," << _build_graph_time << "\n";
+      build_time_file << "build_vector_attr_graph_time" << "," << _build_vector_attr_graph_time << "\n";
+      build_time_file << "cal_descendants_time" << "," << _cal_descendants_time << "\n";
+      build_time_file << "cal_coverage_ratio_time" << "," << _cal_coverage_ratio_time << "\n";
+      build_time_file << "build_LNG_time" << "," << _build_LNG_time << "\n";
+      build_time_file << "build_cross_edges_time" << "," << _build_cross_edges_time << "\n";
+      build_time_file.close();
 
       // save vectors and label sets
       std::string bin_file = index_path_prefix + "vecs.bin";

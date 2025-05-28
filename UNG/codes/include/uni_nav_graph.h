@@ -47,7 +47,7 @@ namespace ANNS
                          bool is_ori_ung);
 
       // I/O
-      void save(std::string index_path_prefix);
+      void save(std::string index_path_prefix, std::string results_path_prefix);
       void load(std::string index_path_prefix, const std::string &data_type);
 
       // query generator
@@ -159,8 +159,9 @@ namespace ANNS
                                             bool clear_search_queue = true, bool clear_visited_set = true);
 
       // statistics
-      float _index_time, _label_processing_time, _build_graph_time;
-      float _build_LNG_time = 0, _build_cross_edges_time = 0, _index_size;
+      float _index_time = 0, _label_processing_time = 0, _build_graph_time = 0, _build_vector_attr_graph_time = 0, _cal_descendants_time = 0, _cal_coverage_ratio_time = 0;
+      float _build_LNG_time = 0, _build_cross_edges_time = 0;
+      float _index_size;
       IdxType _graph_num_edges, _LNG_num_edges;
       void statistics();
    };

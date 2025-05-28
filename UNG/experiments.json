@@ -10,7 +10,10 @@
          "alpha": 1.2,
          "num_cross_edges": 6,
          "num_entry_points": 16,
-         "Lsearch_values": "10 15 20 25 30 35 40 45"
+         "Lsearch_values": "10 15 20 25 30 35 40 45",
+         "num_threads": 32,
+         "K": 10,
+         "num_repeats": 10
       },
       {
          "dataset": "MTG",
@@ -22,7 +25,10 @@
          "alpha": 1.2,
          "num_cross_edges": 6,
          "num_entry_points": 16,
-         "Lsearch_values": "10 15 20 25 30 35 40 45"
+         "Lsearch_values": "10 15 20 25 30 35 40 45",
+         "num_threads": 32,
+         "K": 10,
+         "num_repeats": 10
       },
       {
          "dataset": "arxiv",
@@ -34,7 +40,10 @@
          "alpha": 1.2,
          "num_cross_edges": 6,
          "num_entry_points": 16,
-         "Lsearch_values": "10 15 20 25 30 35 40 45"
+         "Lsearch_values": "10 15 20 25 30 35 40 45",
+         "num_threads": 32,
+         "K": 10,
+         "num_repeats": 10
       }
    ]
 }

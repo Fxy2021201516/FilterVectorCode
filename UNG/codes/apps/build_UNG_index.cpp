@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 {
 
    // common auguments
-   std::string data_type, dist_fn, base_bin_file, base_label_file, index_path_prefix;
+   std::string data_type, dist_fn, base_bin_file, base_label_file, index_path_prefix, result_path_prefix;
    uint32_t num_threads;
    ANNS::IdxType num_cross_edges;
 
@@ -42,6 +42,8 @@ int main(int argc, char **argv)
                          "Number of threads to use");
       desc.add_options()("index_path_prefix", po::value<std::string>(&index_path_prefix)->required(),
                          "Path prefix for saving the index");
+      desc.add_options()("result_path_prefix", po::value<std::string>(&result_path_prefix)->required(),
+                         "Path prefix for saving the results");
 
       // parameters for graph indices
       desc.add_options()("scenario", po::value<std::string>(&scenario)->default_value("general"),
@@ -93,16 +95,16 @@ int main(int argc, char **argv)
 
    // preparation
    std::cout << "Building Unified Navigating Graph index based on " << index_type << " algorithm ..." << std::endl;
-   auto start_time = std::chrono::high_resolution_clock::now();
    std::shared_ptr<ANNS::DistanceHandler> distance_handler = ANNS::get_distance_handler(data_type, dist_fn);
 
    // build index
    ANNS::UniNavGraph index;
+   auto start_time = std::chrono::high_resolution_clock::now();
    index.build(base_storage, distance_handler, scenario, index_type, num_threads, num_cross_edges, max_degree, Lbuild, alpha);
    std::cout << "Index time: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count() << "ms" << std::endl;
 
    // save index
-   index.save(index_path_prefix);
+   index.save(index_path_prefix, result_path_prefix);
 
    // 测试读取向量-属性二分图的函数
    // ANNS::UniNavGraph index2;

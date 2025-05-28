@@ -13,7 +13,7 @@ CONFIG_FILE="../../FilterVectorCode/UNG/experiments.json"
 cat "$CONFIG_FILE" | jq -c '.experiments[]' | while read -r experiment; do
     dataset=$(echo "$experiment" | jq -r '.dataset')
     
-    echo -e "\n============================================"
+    echo -e "============================================"
     echo "开始处理数据集: $dataset"
     echo "============================================"
     
@@ -28,5 +28,16 @@ cat "$CONFIG_FILE" | jq -c '.experiments[]' | while read -r experiment; do
         --num_cross_edges "$(echo "$experiment" | jq -r '.num_cross_edges')" \
         --num_entry_points "$(echo "$experiment" | jq -r '.num_entry_points')" \
         --Lsearch_values "$(echo "$experiment" | jq -r '.Lsearch_values')" \
-        --build_dir "build_$dataset"
+        --build_dir "build_$dataset" \
+        --num_threads "$(echo "$experiment" | jq -r '.num_threads')" \
+        --K "$(echo "$experiment" | jq -r '.K')" \
+        --num_repeats "$(echo "$experiment" | jq -r '.num_repeats')"
+   
+    echo "数据集 $dataset 处理完成"
+    echo "============================================"
 done
+
+echo "所有数据集处理完成，开始汇总结果..."
+python3 ./data/summarize_csv.py ../../FilterVectorResults
+echo "所有实验处理完成，结果已汇总。"
+echo "============================================="

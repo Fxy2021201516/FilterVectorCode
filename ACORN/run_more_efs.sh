@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 参数检查
-if [ "$#" -ne 7 ]; then
-    echo "用法: $0 <dataset_name> <N> <M> <M_beta> <gamma> <query_num> <threads>"
+if [ "$#" -ne 11 ]; then
+    echo "用法: $0 <dataset_name> <N> <M> <M_beta> <gamma> <query_num> <threads> <efs_begin> <efs_step> <efs_end> <run_num>"
     exit 1
 fi
 
@@ -13,6 +13,10 @@ M_beta=$4
 gamma=$5
 query_num=$6
 threads=$7
+efs_begin=$8
+efs_step=$9
+efs_end=${10}
+run_num=${11}
 
 # 清理旧构建
 rm -rf build_$dataset
@@ -51,15 +55,15 @@ base_path="../../FilterVectorData/${dataset}" # base vector dir
 for i in $(seq 1 $query_num); do
     query_path="../../FilterVectorData/${dataset}/query_${i}"
     base_label_path="../../FilterVectorData/${dataset}/base_${i}"
-    
-    for efs in $(seq 4 4 8); do
-        for run in {1..2}; do
+
+    for efs in $(seq $efs_begin $efs_step $efs_end); do
+        for run in $(seq 1 $run_num); do
             csv_path="${per_query_task_dir}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_efs${efs}_run${run}.csv"
             avg_csv_path="${per_query_task_dir}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_efs${efs}_run${run}_avg.csv"
             dis_output_path="${parent_dir}/dis_output"
             
             # 仅第一次运行时生成JSON
-            if [ "$efs" -eq 4 ] && [ "$run" -eq 1 ]; then
+            if [ "$efs" -eq $efs_begin ] && [ "$run" -eq 1 ]; then
                generate_dist_output="1"
                echo "为查询 ${i} 生成JSON (仅第一次运行)"
             else
@@ -67,7 +71,7 @@ for i in $(seq 1 $query_num); do
             fi
             
             echo "运行测试: 数据集=${dataset}, 查询=${i}, efs=${efs}, 运行=${run}, gamma=${gamma}, M=${M}, 线程=${threads}"
-            ./build_$dataset/demos/test_acorn $N $gamma $dataset $M $M_beta $efs "$base_path" "$base_label_path" "$query_path" "$csv_path" "$avg_csv_path" "$dis_output_path" "$generate_dist_output" &>> "${parent_dir}/output_log.log"
+            ./build_$dataset/demos/test_acorn $N $gamma $dataset $M $M_beta $efs "$base_path" "$base_label_path" "$query_path" "$csv_path" "$avg_csv_path" "$dis_output_path" "$generate_dist_output" "$threads"&>> "${parent_dir}/output_log.log"
         done
     done
 done

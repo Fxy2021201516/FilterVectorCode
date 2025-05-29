@@ -131,7 +131,7 @@ namespace faiss
           bool verbose,
           bool preset_levels = false)
       {
-         // omp_set_num_threads(1); // thread=1
+         // omp_set_num_threads(32);
          size_t d = index_acorn.d;
          ACORN &acorn = index_acorn.acorn;
          size_t ntotal = n0 + n;
@@ -371,7 +371,7 @@ namespace faiss
        std::vector<size_t> *query_n3,    // 记录每个查询的n3
        const SearchParameters *params_in) const
    {
-      omp_set_num_threads(32); // thread=32
+      // omp_set_num_threads(32); // thread=32
       // std::cout << "enter IndexACORN::search" << std::endl;
 
       FAISS_THROW_IF_NOT(k > 0);
@@ -398,7 +398,7 @@ namespace faiss
       {
          idx_t i1 = std::min(i0 + check_period, n);
 
-#pragma omp parallel num_threads(32)
+#pragma omp parallel
          {
             VisitedTable vt(ntotal);
 

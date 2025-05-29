@@ -97,7 +97,7 @@ mkdir -p "$RESULT_DIR"
     --index_path_prefix "$OUTPUT_DIR/index_files/" \
     --result_path_prefix "$RESULT_DIR/" \
     --scenario general \
-    --generate_query true --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
+    --generate_query false --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
     --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
 
 # Step6:转换查询数据格式

@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# 数据集配置 (名称 N M M_beta gamma query0/1/2 thread)
+# 数据集配置 (名称 N M M_beta gamma query0/1/2 thread [efs_begin efs_step efs_end] run_num)
 declare -A DATASET_CONFIGS=(
-    ["words"]="8000 32 64 80 1 32"
-    ["MTG"]="40274 32 64 80 1 32 "
-    ["arxiv"]="157606 32 64 80 1 32"
+    ["words"]="8000 32 64 80 1 32 [4 4 128] 10"
+    ["MTG"]="40274 32 64 80 1 32 [4 4 128] 10"
+    ["arxiv"]="157606 32 64 80 1 32 [4 4 128] 10"
 )
 
 # 运行所有数据集实验
@@ -22,9 +22,13 @@ for dataset in "${!DATASET_CONFIGS[@]}"; do
     gamma=${params[3]}
     query_num=${params[4]}
     threads=${params[5]}
-    
+    efs_begin=${params[6]//[\[\]]/} # 去掉方括号
+    efs_step=${params[7]//[\[\]]/}  # 去掉方括号
+    efs_end=${params[8]//[\[\]]/}    # 去掉方括号
+    run_num=${params[9]//[\[\]]/}    # 去掉方括号
+
     # 运行测试脚本
-    ./run_more_efs.sh "$dataset" "$N" "$M" "$M_beta" "$gamma" "$query_num" "$threads"
+    ./run_more_efs.sh "$dataset" "$N" "$M" "$M_beta" "$gamma" "$query_num" "$threads" "$efs_begin" "$efs_step" "$efs_end" "$run_num"
 
     # 执行python汇总csv文件
     parent_dir="../../FilterVectorResults/ACORN/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}/per_query_task_dir"

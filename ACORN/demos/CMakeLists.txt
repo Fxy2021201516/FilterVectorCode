@@ -106,3 +106,11 @@ target_link_libraries(demo_residual_quantizer PRIVATE faiss)
 
 add_executable(test_acorn EXCLUDE_FROM_ALL test_acorn.cpp)
 target_link_libraries(test_acorn PRIVATE faiss)
+
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(test_acorn PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(faiss PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(faiss_avx2 PRIVATE OpenMP::OpenMP_CXX)
+endif()
+

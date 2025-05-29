@@ -59,10 +59,9 @@ struct QueryResult
 
 int main(int argc, char *argv[])
 {
-   unsigned int nthreads = std::thread::hardware_concurrency();
+   // unsigned int nthreads = std::thread::hardware_concurrency();
    std::cout
        << "====================\nSTART: running TEST_ACORN for hnsw, sift data --"
-       << nthreads << "cores\n"
        << std::endl;
    double t0 = elapsed();
 
@@ -89,7 +88,7 @@ int main(int argc, char *argv[])
    int num_trials = 60;
 
    size_t N = 0; // N will be how many we truncate nb from sift1M to
-   int generate_dist_output;
+   int generate_dist_output, nthreads;
    std::string BASE_DIR, BASE_LABEL_DIR, ATTR_DATA_DIR, MY_DIS_DIR, MY_DIS_SORT_DIR;
    std::string base_path, base_label_path, query_path, csv_path, avg_csv_path, dis_output_path;
 
@@ -144,7 +143,13 @@ int main(int argc, char *argv[])
 
       generate_dist_output = atoi(argv[13]);
       printf("generate_dist_output: %d\n", generate_dist_output);
+
+      nthreads = atoi(argv[14]);
+      printf("nthreads: %d\n", nthreads);
    }
+
+   omp_set_num_threads(nthreads);
+   printf("Using %d threads\n", nthreads);
 
    BASE_DIR = base_path;
    BASE_LABEL_DIR = base_label_path;

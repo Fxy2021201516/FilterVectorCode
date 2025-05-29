@@ -82,7 +82,7 @@ def process_avg_csv_files(input_dir, avg_stats):
 
 def write_per_query_files(stats, output_dir, dataset, gamma, M, threads):
     """为每个 QueryID 写入合并了 efs 的结果文件"""
-    output_dir_per_query = os.path.join(output_dir, "per_query_merged_efs")
+    output_dir_per_query = os.path.join(output_dir, "per_query_merged_by_efs")
     os.makedirs(output_dir_per_query, exist_ok=True)
 
     fieldnames = [
@@ -120,9 +120,49 @@ def write_per_query_files(stats, output_dir, dataset, gamma, M, threads):
     print(f"✅ 已为每个查询生成合并了 efs 的文件，保存在: {output_dir_per_query}")
 
 
+def write_per_efs_files(stats, output_dir, dataset, gamma, M, threads):
+    """为每个 efs 写入合并了 QueryID 的结果文件"""
+    output_dir_per_efs = os.path.join(output_dir, "per_efs_merged_by_query")
+    os.makedirs(output_dir_per_efs, exist_ok=True)
+
+    fieldnames = [
+        'QueryID',
+        'acorn_Time', 'acorn_QPS', 'acorn_Recall', 'acorn_n3',
+        'ACORN_1_Time', 'ACORN_1_QPS', 'ACORN_1_Recall', 'ACORN_1_n3',
+        'FilterMapTime'
+    ]
+
+    efs_groups = defaultdict(list)
+    for (query_id, efs), data in sorted(stats.items()):
+        avg_data = {
+            'QueryID': query_id,
+            'acorn_Time': data['acorn_Time'] / data['count'],
+            'acorn_QPS': data['acorn_QPS'] / data['count'],
+            'acorn_Recall': data['acorn_Recall'] / data['count'],
+            'acorn_n3': data['acorn_n3'] / data['count'],
+            'ACORN_1_Time': data['ACORN_1_Time'] / data['count'],
+            'ACORN_1_QPS': data['ACORN_1_QPS'] / data['count'],
+            'ACORN_1_Recall': data['ACORN_1_Recall'] / data['count'],
+            'ACORN_1_n3': data['ACORN_1_n3'] / data['count'],
+            'FilterMapTime': data['FilterMapTime'] / data['count']
+        }
+        efs_groups[efs].append(avg_data)
+
+    for efs, rows in efs_groups.items():
+        filename = f"acorn_{dataset}_efs{efs}_gamma{gamma}_M{M}_threads{threads}.csv"
+        file_path = os.path.join(output_dir_per_efs, filename)
+
+        with open(file_path, mode='w', newline='', encoding='utf-8') as out_file:
+            writer = csv.DictWriter(out_file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
+    print(f"✅ 已为每个 efs 生成合并了 QueryID 的文件，保存在: {output_dir_per_efs}")
+
+
 def write_avg_by_efs_file(avg_stats, output_dir):
     """将所有 avg 文件按 efs 合并写入一个汇总文件"""
-    filename = f"avg_by_efs_avg_by_efs_acorn_{dataset}_gamma{gamma}_M{M}_threads{threads}.csv"
+    filename = f"avg_by_efs.csv"
     merged_avg_output = os.path.join(output_dir, filename)
     fieldnames = [
         'efs',
@@ -164,7 +204,6 @@ def delete_all_csv_files_in_directory(input_dir):
                 except Exception as e:
                     print(f"❌ 删除文件失败 {file_path}: {e}")
 
-    # 最后尝试删除 input_dir 本身（如果为空）
     try:
         os.rmdir(input_dir)
         print(f"🗑️ 已删除空目录: {input_dir}")
@@ -173,7 +212,6 @@ def delete_all_csv_files_in_directory(input_dir):
 
 
 def main(input_dir, output_dir, dataset, gamma, M, threads):
-    # 初始化统计数据
     stats = defaultdict(lambda: {
         'count': 0,
         'acorn_Time': 0.0,
@@ -200,22 +238,20 @@ def main(input_dir, output_dir, dataset, gamma, M, threads):
         'FilterMapTime': 0.0
     })
 
-    # 处理两类文件
     process_normal_csv_files(input_dir, stats)
     process_avg_csv_files(input_dir, avg_stats)
 
-    # 输出结果
     write_per_query_files(stats, output_dir, dataset, gamma, M, threads)
+    write_per_efs_files(stats, output_dir, dataset, gamma, M, threads)
     write_avg_by_efs_file(avg_stats, output_dir)
 
-    # 删除 input_dir 及其下所有 CSV 文件
-    delete_all_csv_files_in_directory(input_dir)
-    print("✅ input_dir 及其所有 .csv 文件已清理完成")
+   #  delete_all_csv_files_in_directory(input_dir)
+   #  print("✅ input_dir 及其所有 .csv 文件已清理完成")
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:
-        print("用法: python3 summarize_per_query_merge_efs.py <input_dir> <output_dir> <dataset> <gamma> <M> <threads>")
+        print("用法: python script.py <input_dir> <output_dir> <dataset> <gamma> <M> <threads>")
         sys.exit(1)
 
     input_dir = sys.argv[1]

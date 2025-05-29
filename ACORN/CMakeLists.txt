@@ -87,3 +87,7 @@ target_include_directories(faiss PRIVATE ${nlohmann_json_SOURCE_DIR}/include)
 find_package(ZLIB REQUIRED)
 target_link_libraries(faiss PUBLIC ${ZLIB_LIBRARIES})
 
+find_package(OpenMP REQUIRED)
+target_link_libraries(faiss PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(faiss_avx2 PRIVATE OpenMP::OpenMP_CXX)
+

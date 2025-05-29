@@ -46,10 +46,12 @@ def process_normal_csv_files(input_dir, stats):
                         stats[key]['acorn_QPS'] += float(row['acorn_QPS'])
                         stats[key]['acorn_Recall'] += float(row['acorn_Recall'])
                         stats[key]['acorn_n3'] += float(row['acorn_n3'])
+                        stats[key]['acorn_build_time'] += float(row.get('acorn_build_time', 0.0))
                         stats[key]['ACORN_1_Time'] += float(row['ACORN_1_Time'])
                         stats[key]['ACORN_1_QPS'] += float(row['ACORN_1_QPS'])
                         stats[key]['ACORN_1_Recall'] += float(row['ACORN_1_Recall'])
                         stats[key]['ACORN_1_n3'] += float(row['ACORN_1_n3'])
+                        stats[key]['ACORN_1_build_time'] += float(row.get('ACORN_1_build_time', 0.0))
                         stats[key]['FilterMapTime'] += float(row['FilterMapTime'])
 
 
@@ -73,10 +75,12 @@ def process_avg_csv_files(input_dir, avg_stats):
                         avg_stats[efs]['acorn_QPS'] += float(row['acorn_QPS'])
                         avg_stats[efs]['acorn_Recall'] += float(row['acorn_Recall'])
                         avg_stats[efs]['acorn_n3'] += float(row['acorn_n3'])
+                        avg_stats[efs]['acorn_build_time'] += float(row.get('acorn_build_time', 0.0))
                         avg_stats[efs]['ACORN_1_Time'] += float(row['ACORN_1_Time'])
                         avg_stats[efs]['ACORN_1_QPS'] += float(row['ACORN_1_QPS'])
                         avg_stats[efs]['ACORN_1_Recall'] += float(row['ACORN_1_Recall'])
                         avg_stats[efs]['ACORN_1_n3'] += float(row['ACORN_1_n3'])
+                        avg_stats[efs]['ACORN_1_build_time'] += float(row.get('ACORN_1_build_time', 0.0))
                         avg_stats[efs]['FilterMapTime'] += float(row['FilterMapTime'])
 
 
@@ -87,8 +91,8 @@ def write_per_query_files(stats, output_dir, dataset, gamma, M, threads):
 
     fieldnames = [
         'efs',
-        'acorn_Time', 'acorn_QPS', 'acorn_Recall', 'acorn_n3',
-        'ACORN_1_Time', 'ACORN_1_QPS', 'ACORN_1_Recall', 'ACORN_1_n3',
+        'acorn_Time', 'acorn_QPS', 'acorn_Recall', 'acorn_n3','acorn_build_time',
+        'ACORN_1_Time', 'ACORN_1_QPS', 'ACORN_1_Recall', 'ACORN_1_n3', 'ACORN_1_build_time',
         'FilterMapTime'
     ]
 
@@ -100,10 +104,12 @@ def write_per_query_files(stats, output_dir, dataset, gamma, M, threads):
             'acorn_QPS': data['acorn_QPS'] / data['count'],
             'acorn_Recall': data['acorn_Recall'] / data['count'],
             'acorn_n3': data['acorn_n3'] / data['count'],
+            'acorn_build_time': data['acorn_build_time'] / data['count'],
             'ACORN_1_Time': data['ACORN_1_Time'] / data['count'],
             'ACORN_1_QPS': data['ACORN_1_QPS'] / data['count'],
             'ACORN_1_Recall': data['ACORN_1_Recall'] / data['count'],
             'ACORN_1_n3': data['ACORN_1_n3'] / data['count'],
+            'ACORN_1_build_time': data['ACORN_1_build_time'] / data['count'],
             'FilterMapTime': data['FilterMapTime'] / data['count']
         }
         queries[qid].append(avg_data)
@@ -127,8 +133,8 @@ def write_per_efs_files(stats, output_dir, dataset, gamma, M, threads):
 
     fieldnames = [
         'QueryID',
-        'acorn_Time', 'acorn_QPS', 'acorn_Recall', 'acorn_n3',
-        'ACORN_1_Time', 'ACORN_1_QPS', 'ACORN_1_Recall', 'ACORN_1_n3',
+        'acorn_Time', 'acorn_QPS', 'acorn_Recall', 'acorn_n3', 'acorn_build_time',
+        'ACORN_1_Time', 'ACORN_1_QPS', 'ACORN_1_Recall', 'ACORN_1_n3', 'ACORN_1_build_time',
         'FilterMapTime'
     ]
 
@@ -140,10 +146,12 @@ def write_per_efs_files(stats, output_dir, dataset, gamma, M, threads):
             'acorn_QPS': data['acorn_QPS'] / data['count'],
             'acorn_Recall': data['acorn_Recall'] / data['count'],
             'acorn_n3': data['acorn_n3'] / data['count'],
+            'acorn_build_time': data['acorn_build_time'] / data['count'],
             'ACORN_1_Time': data['ACORN_1_Time'] / data['count'],
             'ACORN_1_QPS': data['ACORN_1_QPS'] / data['count'],
             'ACORN_1_Recall': data['ACORN_1_Recall'] / data['count'],
             'ACORN_1_n3': data['ACORN_1_n3'] / data['count'],
+            'ACORN_1_build_time': data['ACORN_1_build_time'] / data['count'],
             'FilterMapTime': data['FilterMapTime'] / data['count']
         }
         efs_groups[efs].append(avg_data)
@@ -166,8 +174,8 @@ def write_avg_by_efs_file(avg_stats, output_dir):
     merged_avg_output = os.path.join(output_dir, filename)
     fieldnames = [
         'efs',
-        'acorn_Time', 'acorn_QPS', 'acorn_Recall', 'acorn_n3',
-        'ACORN_1_Time', 'ACORN_1_QPS', 'ACORN_1_Recall', 'ACORN_1_n3',
+        'acorn_Time', 'acorn_QPS', 'acorn_Recall', 'acorn_n3', 'acorn_build_time',
+        'ACORN_1_Time', 'ACORN_1_QPS', 'ACORN_1_Recall', 'ACORN_1_n3', 'ACORN_1_build_time',
         'FilterMapTime'
     ]
 
@@ -182,10 +190,12 @@ def write_avg_by_efs_file(avg_stats, output_dir):
                 'acorn_QPS': data['acorn_QPS'] / data['count'],
                 'acorn_Recall': data['acorn_Recall'] / data['count'],
                 'acorn_n3': data['acorn_n3'] / data['count'],
+                'acorn_build_time': data['acorn_build_time'] / data['count'],
                 'ACORN_1_Time': data['ACORN_1_Time'] / data['count'],
                 'ACORN_1_QPS': data['ACORN_1_QPS'] / data['count'],
                 'ACORN_1_Recall': data['ACORN_1_Recall'] / data['count'],
                 'ACORN_1_n3': data['ACORN_1_n3'] / data['count'],
+                'ACORN_1_build_time': data['ACORN_1_build_time'] / data['count'],
                 'FilterMapTime': data['FilterMapTime'] / data['count']
             }
             writer.writerow(avg_row)
@@ -218,10 +228,12 @@ def main(input_dir, output_dir, dataset, gamma, M, threads):
         'acorn_QPS': 0.0,
         'acorn_Recall': 0.0,
         'acorn_n3': 0.0,
+         'acorn_build_time': 0.0,
         'ACORN_1_Time': 0.0,
         'ACORN_1_QPS': 0.0,
         'ACORN_1_Recall': 0.0,
         'ACORN_1_n3': 0.0,
+         'ACORN_1_build_time': 0.0,
         'FilterMapTime': 0.0
     })
 
@@ -231,10 +243,12 @@ def main(input_dir, output_dir, dataset, gamma, M, threads):
         'acorn_QPS': 0.0,
         'acorn_Recall': 0.0,
         'acorn_n3': 0.0,
+         'acorn_build_time': 0.0,
         'ACORN_1_Time': 0.0,
         'ACORN_1_QPS': 0.0,
         'ACORN_1_Recall': 0.0,
         'ACORN_1_n3': 0.0,
+         'ACORN_1_build_time': 0.0,
         'FilterMapTime': 0.0
     })
 

@@ -162,7 +162,7 @@ def process_experiment_folder(experiment_path):
         L_grouped_df = group_by_L_and_query(combined_df)
         save_per_L(L_grouped_df, results_path)
         
-        delete_original_files(query_details_files)
+        #delete_original_files(query_details_files)
     else:
         print(f"跳过 {results_path} 的 query_details: 没有找到有效的文件")
 
@@ -172,7 +172,7 @@ def process_experiment_folder(experiment_path):
         output_file = os.path.join(results_path, "result_avg_merged.csv")
         result_avg_df.to_csv(output_file, index=False)
         print(f"已保存合并的 result_avg 文件: {output_file}")
-        delete_original_files(result_avg_files)
+        #delete_original_files(result_avg_files)
     else:
         print(f"跳过 {results_path} 的 result_avg: 没有找到有效的文件")
 

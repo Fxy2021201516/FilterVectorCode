@@ -135,7 +135,7 @@ do
     QUERY_DIR="$DATA_DIR/query_${NUM_QUERY_SETS}"
 
     ./"$BUILD_DIR"/apps/search_UNG_index \
-        --data_type float --dist_fn L2 --num_threads "$NUM_THREADS" --K "$K" --is_new_method true --is_ori_ung true  --num_repeats "$NUM_REPEATS"\
+        --data_type float --dist_fn L2 --num_threads "$NUM_THREADS" --K "$K" --is_new_method true --is_ori_ung true  --num_repeats "$NUM_REPEATS" \
         --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
         --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
         --query_bin_file "$QUERY_DIR/${DATASET}_query.bin" \

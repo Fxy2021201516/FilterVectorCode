@@ -2,6 +2,7 @@
 #include <fstream>
 #include <numeric>
 #include <iostream>
+#include <bitset>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include "uni_nav_graph.h"
@@ -127,18 +128,14 @@ int main(int argc, char **argv)
    auto results = new std::pair<ANNS::IdxType, float>[num_queries * K];
 
    // compute attribute bitmap
-   std::cout << "Computing attribute bitmap ..." << std::endl;
-   auto start_time_bitmap = std::chrono::high_resolution_clock::now();
-   std::vector<std::vector<bool>> bitmap(num_queries);
+   std::vector<std::pair<std::bitset<10000001>, double>> bitmap_and_time(num_queries);
+   std::vector<std::bitset<10000001>> bitmap(num_queries);
 #pragma omp parallel for
    for (int id = 0; id < num_queries; id++)
    {
-      bitmap[id] = index.compute_attribute_bitmap(query_storage->get_label_set(id));
+      bitmap_and_time[id] = index.compute_attribute_bitmap(query_storage->get_label_set(id));
+      bitmap[id] = bitmap_and_time[id].first;
    }
-   auto bitmap_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time_bitmap).count();
-   std::cout << "- Finish in " << bitmap_time << "ms" << std::endl;
-   std::ofstream bitmap_out(result_path_prefix + "build_time.csv", std::ios::app);
-   bitmap_out << "cal_bitmap_time(ms)" << "," << bitmap_time << "\n";
 
    for (int repeat = 0; repeat < num_repeats; ++repeat)
    {
@@ -146,7 +143,7 @@ int main(int argc, char **argv)
 
       // search
       std::vector<float> all_cmps, all_qpss, all_recalls;
-      std::vector<float> all_time_ms, all_entry_points, all_lng_descendants, all_entry_group_coverage;
+      std::vector<float> all_time_ms, all_flag_time, all_bitmap_time, all_entry_points, all_lng_descendants, all_entry_group_coverage;
       std::vector<float> all_is_global_search; // 如果需要统计全局搜索比例
 
       std::cout << "Start querying ..." << std::endl;
@@ -165,10 +162,12 @@ int main(int argc, char **argv)
          // 输出详细文件（保持不变）
          std::string repeat_suffix = "_repeat" + std::to_string(repeat);
          std::ofstream detail_out(result_path_prefix + "query_details_L" + std::to_string(Lsearch) + repeat_suffix + ".csv");
-         detail_out << "QueryID,Time(ms),DistanceCalcs,EntryPoints,LNGDescendants,entry_group_total_coverage,QPS,Recall,is_global_search\n";
+         detail_out << "QueryID,Time(ms),flag_time,bitmap_time(ms),DistanceCalcs,EntryPoints,LNGDescendants,entry_group_total_coverage,QPS,Recall,is_global_search\n";
 
          // 计算各项指标的总和（用于后续求平均）
          float total_time_ms = 0.0f;
+         float total_flag_time = 0.0f;   // 用于存储flag计算时间
+         float total_bitmap_time = 0.0f; // 用于存储bitmap计算时间
          float total_entry_points = 0.0f;
          float total_lng_descendants = 0.0f;
          float total_entry_group_coverage = 0.0f;
@@ -179,6 +178,8 @@ int main(int argc, char **argv)
             float recall = calculate_single_query_recall(gt + i * K, results + i * K, K);
             detail_out << i << ","
                        << query_stats[i].time_ms << ","
+                       << query_stats[i].flag_time_ms << ","
+                       << bitmap_and_time[i].second << ","
                        << query_stats[i].num_distance_calcs << ","
                        << query_stats[i].num_entry_points << ","
                        << query_stats[i].num_lng_descendants << ","
@@ -189,6 +190,8 @@ int main(int argc, char **argv)
 
             // 累加统计值
             total_time_ms += query_stats[i].time_ms;
+            total_flag_time += query_stats[i].flag_time_ms;
+            total_bitmap_time += bitmap_and_time[i].second;
             total_entry_points += query_stats[i].num_entry_points;
             total_lng_descendants += query_stats[i].num_lng_descendants;
             total_entry_group_coverage += query_stats[i].entry_group_total_coverage;
@@ -197,6 +200,8 @@ int main(int argc, char **argv)
 
          // 计算平均值
          float avg_time_ms = total_time_ms / num_queries;
+         float avg_flag_time = total_flag_time / num_queries;
+         float avg_bitmap_time = total_bitmap_time / num_queries; // 平均bitmap计算时间
          float avg_entry_points = total_entry_points / num_queries;
          float avg_lng_descendants = total_lng_descendants / num_queries;
          float avg_entry_group_coverage = total_entry_group_coverage / num_queries;
@@ -204,6 +209,8 @@ int main(int argc, char **argv)
 
          // 保存当前Lsearch的平均值
          all_time_ms.push_back(avg_time_ms);
+         all_flag_time.push_back(avg_flag_time);
+         all_bitmap_time.push_back(avg_bitmap_time);
          all_entry_points.push_back(avg_entry_points);
          all_lng_descendants.push_back(avg_lng_descendants);
          all_entry_group_coverage.push_back(avg_entry_group_coverage);
@@ -218,7 +225,7 @@ int main(int argc, char **argv)
 
       // 输出完整的平均结果文件
       std::ofstream out(result_path_prefix + "result_avg_repeat" + std::to_string(repeat) + ".csv");
-      out << "L,Cmps,QPS,Recall,Time(ms),EntryPoints,LNGDescendants,entry_group_total_coverage\n";
+      out << "L,Cmps,QPS,Recall,Time(ms),Flag_time(ms),Bitmap_time(ms),EntryPoints,LNGDescendants,entry_group_total_coverage\n";
       for (auto i = 0; i < Lsearch_list.size(); i++)
       {
          out << Lsearch_list[i] << ","
@@ -226,6 +233,8 @@ int main(int argc, char **argv)
              << all_qpss[i] << ","
              << all_recalls[i] / 100.00 << ","
              << all_time_ms[i] << ","
+             << all_flag_time[i] << ","
+             << all_bitmap_time[i] << ","
              << all_entry_points[i] << ","
              << all_lng_descendants[i] << ","
              << all_entry_group_coverage[i] << "\n";

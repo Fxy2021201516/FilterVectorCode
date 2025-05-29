@@ -8,6 +8,7 @@
 #include "label_nav_graph.h"
 #include "vamana/vamana.h"
 #include <unordered_map>
+#include <bitset>
 
 namespace ANNS
 {
@@ -15,6 +16,7 @@ namespace ANNS
    {
       float recall;
       double time_ms;
+      double flag_time_ms;
       double entry_group_total_coverage;
       size_t num_distance_calcs;
       size_t num_entry_points;
@@ -35,7 +37,7 @@ namespace ANNS
       void search(std::shared_ptr<IStorage> query_storage, std::shared_ptr<DistanceHandler> distance_handler,
                   uint32_t num_threads, IdxType Lsearch, IdxType num_entry_points, std::string scenario,
                   IdxType K, std::pair<IdxType, float> *results, std::vector<float> &num_cmps,
-                  std::vector<std::vector<bool>> &bitmap);
+                  std::vector<std::bitset<10000001>> &bitmap);
       void search_hybrid(std::shared_ptr<IStorage> query_storage,
                          std::shared_ptr<DistanceHandler> distance_handler,
                          uint32_t num_threads, IdxType Lsearch,
@@ -43,7 +45,7 @@ namespace ANNS
                          IdxType K, std::pair<IdxType, float> *results,
                          std::vector<float> &num_cmps,
                          std::vector<QueryStats> &query_stats,
-                         std::vector<std::vector<bool>> &bitmaps,
+                         std::vector<std::bitset<10000001>> &bitmaps,
                          bool is_ori_ung);
 
       // I/O
@@ -69,7 +71,7 @@ namespace ANNS
       std::unordered_map<AtrType, LabelType> _id_to_attr;   // ID到属性的映射
       AtrType _num_attributes;                              // 唯一属性数量
 
-      std::vector<bool> compute_attribute_bitmap(const std::vector<LabelType> &query_attributes) const; // 构建bitmap
+      std::pair<std::bitset<10000001>, double> compute_attribute_bitmap(const std::vector<LabelType> &query_attributes) const; // 构建bitmap
 
    private:
       // data

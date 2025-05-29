@@ -6,6 +6,7 @@
 #include <vector>
 #include <queue>
 #include <stack>
+#include <bitset>
 
 #include <random>
 #include <fstream>
@@ -71,7 +72,7 @@ namespace ANNS
       // build graph index for each group
       build_graph_for_all_groups();
       // build_global_vamana_graph();
-      build_vector_and_attr_graph();
+      build_vector_and_attr_graph(); // fxy_add
 
       // for label equality scenario, there is no need for label navigating graph and cross-group edges
       if (_scenario == "equality")
@@ -83,10 +84,10 @@ namespace ANNS
 
          // build the label navigating graph
          build_label_nav_graph();
-         get_descendants_info();
+         // get_descendants_info(); // fxy_add
 
          // calculate the coverage ratio
-         cal_f_coverage_ratio();
+         cal_f_coverage_ratio(); // fxy_add
 
          // build cross-group edges
          build_cross_group_edges();
@@ -653,10 +654,12 @@ namespace ANNS
    //=====================================begein 查询过程：计算bitmap=========================================
 
    // fxy_add: 构建bitmap
-   std::vector<bool> UniNavGraph::compute_attribute_bitmap(const std::vector<LabelType> &query_attributes) const
+   std::pair<std::bitset<10000001>, double> UniNavGraph::compute_attribute_bitmap(const std::vector<LabelType> &query_attributes) const
    {
       // 1. 初始化全true的bitmap（表示开始时所有点都满足条件）
-      std::vector<bool> bitmap(_num_points, true);
+      std::bitset<10000001> bitmap;
+      bitmap.set(); // 设置所有位为1
+      double per_query_bitmap_time = 0.0;
 
       // 2. 处理每个查询属性
       for (LabelType attr_label : query_attributes)
@@ -666,7 +669,7 @@ namespace ANNS
          if (it == _attr_to_id.end())
          {
             // 属性不存在，没有任何点能满足所有条件
-            return std::vector<bool>(_num_points, false);
+            return {std::bitset<10000001>(), 0.0};
          }
 
          // 2.2 获取属性节点ID
@@ -674,23 +677,22 @@ namespace ANNS
          IdxType attr_node_id = _num_points + static_cast<IdxType>(attr_id);
 
          // 2.3 创建临时bitmap记录当前属性的满足情况
-         std::vector<bool> temp_bitmap(_num_points, false);
+         std::bitset<10000001> temp_bitmap;
+         auto start_time = std::chrono::high_resolution_clock::now();
          for (IdxType vec_id : _vector_attr_graph[attr_node_id])
          {
-            if (vec_id < _num_points)
-            {
-               temp_bitmap[vec_id] = true;
-            }
+            temp_bitmap.set(vec_id); // 使用set()方法设置对应的位为1
          }
 
          // 2.4 与主bitmap进行AND操作
-         for (IdxType i = 0; i < _num_points; ++i)
-         {
-            bitmap[i] = bitmap[i] && temp_bitmap[i];
-         }
+         bitmap &= temp_bitmap; // 使用&=操作符进行位与操作
+
+         per_query_bitmap_time += std::chrono::duration<double, std::milli>(
+                                      std::chrono::high_resolution_clock::now() - start_time)
+                                      .count();
       }
 
-      return bitmap;
+      return {bitmap, per_query_bitmap_time};
    }
 
    //====================================end 查询过程：计算bitmap=========================================
@@ -1150,7 +1152,7 @@ namespace ANNS
    void UniNavGraph::search(std::shared_ptr<IStorage> query_storage, std::shared_ptr<DistanceHandler> distance_handler,
                             uint32_t num_threads, IdxType Lsearch, IdxType num_entry_points, std::string scenario,
                             IdxType K, std::pair<IdxType, float> *results, std::vector<float> &num_cmps,
-                            std::vector<std::vector<bool>> &bitmap)
+                            std::vector<std::bitset<10000001>> &bitmap)
    {
       auto num_queries = query_storage->get_num_points();
       _query_storage = query_storage;
@@ -1245,7 +1247,7 @@ namespace ANNS
                                    IdxType K, std::pair<IdxType, float> *results,
                                    std::vector<float> &num_cmps,
                                    std::vector<QueryStats> &query_stats,
-                                   std::vector<std::vector<bool>> &bitmaps,
+                                   std::vector<std::bitset<10000001>> &bitmaps,
                                    bool is_ori_ung)
    {
       auto num_queries = query_storage->get_num_points();
@@ -1274,7 +1276,7 @@ namespace ANNS
       for (auto id = 0; id < num_queries; ++id)
       {
          auto &stats = query_stats[id];
-         auto start_time = std::chrono::high_resolution_clock::now();
+         auto total_search_start_time = std::chrono::high_resolution_clock::now();
 
          auto search_cache = search_cache_list.get_free_cache();
          const char *query = _query_storage->get_vector(id);
@@ -1292,6 +1294,8 @@ namespace ANNS
          std::vector<IdxType> entry_group_ids;
          get_min_super_sets(query_labels, entry_group_ids, true, true);
          stats.num_entry_points = entry_group_ids.size();
+
+         auto flag_start_time = std::chrono::high_resolution_clock::now();
 
          // 2. 读取LNG后代数量
          std::unordered_set<IdxType> all_descendants; // unordered_set可以避免重复
@@ -1321,6 +1325,9 @@ namespace ANNS
 
          bool use_global_search = (total_unique_coverage > COVERAGE_THRESHOLD) ||
                                   (all_descendants.size() > MIN_LNG_DESCENDANTS_THRESHOLD);
+         stats.flag_time_ms = std::chrono::duration<double, std::milli>(
+                                  std::chrono::high_resolution_clock::now() - flag_start_time)
+                                  .count();
          if (is_ori_ung)
             use_global_search = false;
          stats.is_global_search = use_global_search;
@@ -1450,7 +1457,7 @@ namespace ANNS
 
          // 6. 记录统计信息
          stats.time_ms = std::chrono::duration<double, std::milli>(
-                             std::chrono::high_resolution_clock::now() - start_time)
+                             std::chrono::high_resolution_clock::now() - total_search_start_time)
                              .count();
 
          search_cache_list.release_cache(search_cache);
@@ -1654,7 +1661,7 @@ namespace ANNS
       std::string build_time_filename = results_path_prefix + "build_time.csv";
       std::ofstream build_time_file(build_time_filename);
       build_time_file << "Index Name,Build Time (ms)\n";
-      build_time_file << "index_name" << "," << _index_time << "\n";
+      build_time_file << "index_time" << "," << _index_time << "\n";
       build_time_file << "label_processing_time" << "," << _label_processing_time << "\n";
       build_time_file << "build_graph_time" << "," << _build_graph_time << "\n";
       build_time_file << "build_vector_attr_graph_time" << "," << _build_vector_attr_graph_time << "\n";

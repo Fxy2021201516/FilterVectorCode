@@ -79,7 +79,7 @@ cmake -DCMAKE_BUILD_TYPE=Release ../codes/
 make -j
 cd .. || exit
 
-OUTPUT_DIR="${OUTPUT_DIR}/${DATASET}_dataset_${DATASET}_query${NUM_QUERY_SETS}_M${MAX_DEGREE}_LB${LBUILD}_alpha${ALPHA}_C${NUM_CROSS_EDGES}_EP${NUM_ENTRY_POINTS}_Lsearch${LSEARCH_VALUES}"
+OUTPUT_DIR="${OUTPUT_DIR}/${DATASET}_dataset_${DATASET}_query${NUM_QUERY_SETS}_M${MAX_DEGREE}_LB${LBUILD}_alpha${ALPHA}_C${NUM_CROSS_EDGES}_EP${NUM_ENTRY_POINTS}_REPEATs${NUM_REPEATS}"
 mkdir -p "$OUTPUT_DIR"
 OTHER_DIR="$OUTPUT_DIR/others"
 mkdir -p "$OTHER_DIR"
@@ -97,7 +97,7 @@ mkdir -p "$RESULT_DIR"
     --index_path_prefix "$OUTPUT_DIR/index_files/" \
     --result_path_prefix "$RESULT_DIR/" \
     --scenario general \
-    --generate_query false --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
+    --generate_query true --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
     --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
 
 # Step6:转换查询数据格式

@@ -84,7 +84,7 @@ namespace ANNS
 
          // build the label navigating graph
          build_label_nav_graph();
-         // get_descendants_info(); // fxy_add
+         get_descendants_info(); // fxy_add
 
          // calculate the coverage ratio
          cal_f_coverage_ratio(); // fxy_add
@@ -2008,30 +2008,14 @@ namespace ANNS
       }
    }
 
-// fxy_add:根据幂集，生成多个查询任务
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <random>
-
-   void UniNavGraph::generatePowerSetToFile(std::string &output_prefix, std::string dataset, int m)
+   // fxy_add:根据幂集，生成多个查询任务
+   void UniNavGraph::generatePowerSetToFile(std::string &output_prefix, std::string dataset, int m, int query_n)
    {
-      // Step1: 生成query_label.txt
-      std::ofstream txt_File(output_prefix + "/" + dataset + "_query_labels.txt");
-
-      if (!txt_File.is_open())
-      {
-         std::cerr << "Failed to open file for writing query labels." << std::endl;
-         return;
-      }
-
-      // 总共有 2^(m+1) 个子集，去掉空集
-      int total = 1 << (m + 1); // 2^(m+1)
-
+      // Step1: 生成所有非空子集(幂集)
       std::vector<std::vector<int>> all_subsets;
+      int total_subsets = 1 << (m + 1); // 2^(m+1)
 
-      for (int mask = 1; mask < total; ++mask)
+      for (int mask = 1; mask < total_subsets; ++mask)
       { // 从1开始，跳过空集
          std::vector<int> subset;
          for (int i = 0; i <= m; ++i)
@@ -2040,21 +2024,25 @@ namespace ANNS
                subset.push_back(i);
          }
          all_subsets.push_back(subset);
-
-         // 输出格式如: 1,2,3
-         for (size_t i = 0; i < subset.size(); ++i)
-         {
-            txt_File << subset[i] + 1; // 修改为从1开始
-            if (i != subset.size() - 1)
-               txt_File << ",";
-         }
-         txt_File << std::endl;
       }
-      txt_File.close();
 
-      // Step2: 生成query_fvecs.bin
+      // 检查幂集是否为空
+      if (all_subsets.empty())
+      {
+         std::cerr << "Error: No subsets generated." << std::endl;
+         return;
+      }
+
+      // Step2: 生成query_label.txt
+      std::ofstream txt_File(output_prefix + "/" + dataset + "_query_labels.txt");
+      if (!txt_File.is_open())
+      {
+         std::cerr << "Failed to open file for writing query labels." << std::endl;
+         return;
+      }
+
+      // Step3: 生成query_fvecs.bin
       std::ofstream fvec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
-
       if (!fvec_file.is_open())
       {
          std::cerr << "Failed to open file for writing query vectors." << std::endl;
@@ -2062,26 +2050,51 @@ namespace ANNS
       }
 
       uint32_t dim = _base_storage->get_dim();
-
-      // 随机数生成器
       std::random_device rd;
       std::mt19937 gen(rd());
-      std::uniform_int_distribution<ANNS::IdxType> dis(1, _num_points - 1);
 
-      for (const auto &subset : all_subsets)
+      // 用于随机选择子集
+      std::uniform_int_distribution<size_t> subset_dis(0, all_subsets.size() - 1);
+
+      // 用于确保选择的向量不重复
+      std::uniform_int_distribution<ANNS::IdxType> vec_dis(1, _num_points - 1);
+      std::unordered_set<ANNS::IdxType> used_vec_ids;
+
+      for (int i = 0; i < query_n; ++i)
       {
-         // 对于每个subset，随机选择一个向量ID
-         ANNS::IdxType vec_id = dis(gen);
+         // 随机选择一个子集作为标签
+         size_t subset_idx = subset_dis(gen);
+         const auto &subset = all_subsets[subset_idx];
+
+         // 写入标签文件
+         for (size_t j = 0; j < subset.size(); ++j)
+         {
+            txt_File << subset[j] + 1; // 从1开始计数
+            if (j != subset.size() - 1)
+               txt_File << ",";
+         }
+         txt_File << std::endl;
+
+         // 确保选择的向量不重复
+         ANNS::IdxType vec_id;
+         do
+         {
+            vec_id = vec_dis(gen);
+         } while (used_vec_ids.count(vec_id) > 0 && used_vec_ids.size() < _num_points - 1);
+
+         used_vec_ids.insert(vec_id);
          const char *vec_data = _base_storage->get_vector(vec_id);
 
+         // 写入向量文件
          fvec_file.write((char *)&dim, sizeof(uint32_t));
          fvec_file.write(vec_data, dim * sizeof(float));
       }
 
+      txt_File.close();
       fvec_file.close();
 
-      std::cout << "All non-empty subsets written to " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
-      std::cout << "All query vectors written to " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
+      std::cout << query_n << " query vectors written to " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
+      std::cout << "Corresponding labels written to " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
    }
 
    // ===================================end：生成query task========================================

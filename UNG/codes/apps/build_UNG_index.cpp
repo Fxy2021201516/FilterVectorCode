@@ -117,7 +117,7 @@ int main(int argc, char **argv)
       std::cout << "Generating query file ..." << std::endl;
       std::cout << "Query file path: " << query_file_path << std::endl;
       // index.generate_multiple_queries(dataset, index, query_file_path, 10, 1, 0.5f, false, true);
-      index.generatePowerSetToFile(query_file_path, dataset, 2);
+      index.generatePowerSetToFile(query_file_path, dataset, 2, 300);
    }
 
    return 0;

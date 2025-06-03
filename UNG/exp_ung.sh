@@ -37,7 +37,7 @@ cat "$CONFIG_FILE" | jq -c '.experiments[]' | while read -r experiment; do
     echo "============================================"
 done
 
-echo "所有数据集处理完成，开始汇总结果..."
-python3 ./data/summarize_csv.py ../../FilterVectorResults
-echo "所有实验处理完成，结果已汇总。"
+# echo "所有数据集处理完成，开始汇总结果..."
+# python3 ./data/summarize_csv.py ../../FilterVectorResults
+# echo "所有实验处理完成，结果已汇总。"
 echo "============================================="

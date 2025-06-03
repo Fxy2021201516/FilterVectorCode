@@ -2056,7 +2056,7 @@ namespace ANNS
       // 用于随机选择子集
       std::uniform_int_distribution<size_t> subset_dis(0, all_subsets.size() - 1);
 
-      // 用于确保选择的向量不重复
+      // 确保选择的向量不重复
       std::uniform_int_distribution<ANNS::IdxType> vec_dis(1, _num_points - 1);
       std::unordered_set<ANNS::IdxType> used_vec_ids;
 
@@ -2095,6 +2095,186 @@ namespace ANNS
 
       std::cout << query_n << " query vectors written to " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
       std::cout << "Corresponding labels written to " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
+   }
+
+   // fxy_add:生成覆盖率低的查询任务
+   void UniNavGraph::generateLowCoverageQueriesToFile(
+       std::string &output_prefix,
+       std::string dataset,
+       int query_n,
+       std::string &base_label_file,
+       int num_of_per_query_labels,
+       float coverage_threshold)
+   {
+      // Step 1: 从标签文件加载并分析标签分布
+      std::ifstream label_file(base_label_file);
+      if (!label_file.is_open())
+      {
+         std::cerr << "Failed to open label file: " << base_label_file << std::endl;
+         return;
+      }
+
+      // 统计标签出现频率
+      std::unordered_map<int, int> label_counts;
+      std::vector<std::vector<int>> all_label_sets;
+      std::string line;
+
+      while (std::getline(label_file, line))
+      {
+         std::vector<int> labels;
+         std::stringstream ss(line);
+         std::string label_str;
+
+         while (std::getline(ss, label_str, ','))
+         {
+            int label = std::stoi(label_str);
+            labels.push_back(label);
+            label_counts[label]++;
+         }
+
+         std::sort(labels.begin(), labels.end());
+         all_label_sets.push_back(labels);
+      }
+      label_file.close();
+
+      // 如果没有标签数据，使用默认标签
+      if (all_label_sets.empty())
+      {
+         std::cerr << "No label data found, using default label 1" << std::endl;
+         all_label_sets.push_back({1});
+         label_counts[1] = 1;
+      }
+
+      // Step 2: 识别低覆盖率标签组合（排除覆盖率为0的组合）
+      struct LabelSetInfo
+      {
+         std::vector<int> labels;
+         int count;
+         float coverage;
+      };
+
+      std::vector<LabelSetInfo> valid_low_coverage_sets;
+      int total_vectors = all_label_sets.size();
+
+      // 统计标签组合的覆盖率（最多num_of_per_query_labels个标签的组合）
+      std::map<std::vector<int>, int> combination_counts;
+      for (const auto &labels : all_label_sets)
+      {
+         // 生成所有可能的1-num_of_per_query_labels标签组合
+         for (int k = 1; k <= num_of_per_query_labels && k <= labels.size(); ++k)
+         {
+            std::vector<bool> mask(labels.size(), false);
+            std::fill(mask.begin(), mask.begin() + k, true);
+
+            do
+            {
+               std::vector<int> combination;
+               for (size_t i = 0; i < mask.size(); ++i)
+               {
+                  if (mask[i])
+                     combination.push_back(labels[i]);
+               }
+               combination_counts[combination]++;
+            } while (std::prev_permutation(mask.begin(), mask.end()));
+         }
+      }
+
+      // 筛选出覆盖率大于0且低于阈值的组合
+      for (const auto &entry : combination_counts)
+      {
+         // 跳过覆盖率为0的组合
+         if (entry.second == 0)
+            continue;
+
+         float coverage = static_cast<float>(entry.second) / total_vectors;
+         if (coverage <= coverage_threshold)
+         {
+            valid_low_coverage_sets.push_back({entry.first, entry.second, coverage});
+         }
+      }
+
+      // 按覆盖率升序排序
+      std::sort(valid_low_coverage_sets.begin(), valid_low_coverage_sets.end(),
+                [](const auto &a, const auto &b)
+                {
+                   return a.coverage < b.coverage;
+                });
+
+      // 检查是否有足够的有效组合
+      if (valid_low_coverage_sets.empty())
+      {
+         std::cerr << "Error: No valid low-coverage label combinations found (all either have coverage=0 or > "
+                   << coverage_threshold << ")" << std::endl;
+         return;
+      }
+
+      // Step 3: 生成查询文件和标签
+      std::ofstream txt_file(output_prefix + "/" + dataset + "_query_labels.txt");
+      std::ofstream fvec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
+
+      if (!txt_file.is_open() || !fvec_file.is_open())
+      {
+         std::cerr << "Failed to open output files." << std::endl;
+         return;
+      }
+
+      uint32_t dim = _base_storage->get_dim();
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_int_distribution<ANNS::IdxType> vec_dis(0, _base_storage->get_num_points() - 1);
+      std::unordered_set<ANNS::IdxType> used_vec_ids;
+
+      // 选择前query_n个最稀有的有效标签组合
+      int queries_generated = 0;
+      for (size_t i = 0; i < valid_low_coverage_sets.size() && queries_generated < query_n; ++i)
+      {
+         const auto &label_set = valid_low_coverage_sets[i].labels;
+
+         // 写入标签文件
+         for (size_t j = 0; j < label_set.size(); ++j)
+         {
+            txt_file << label_set[j];
+            if (j != label_set.size() - 1)
+               txt_file << ",";
+         }
+         // txt_file << " coverage:" << valid_low_coverage_sets[i].coverage;
+         txt_file << std::endl;
+
+         // 随机选择一个向量（确保不重复）
+         ANNS::IdxType vec_id;
+         do
+         {
+            vec_id = vec_dis(gen);
+         } while (used_vec_ids.count(vec_id) > 0 &&
+                  used_vec_ids.size() < _base_storage->get_num_points());
+
+         used_vec_ids.insert(vec_id);
+         const char *vec_data = _base_storage->get_vector(vec_id);
+
+         // 写入向量文件
+         fvec_file.write((char *)&dim, sizeof(uint32_t));
+         fvec_file.write(vec_data, dim * sizeof(float));
+
+         queries_generated++;
+      }
+
+      txt_file.close();
+      fvec_file.close();
+
+      std::cout << "Generated " << queries_generated << " low-coverage queries with 0 < coverage <= "
+                << coverage_threshold << std::endl;
+      std::cout << "Labels written to: " << output_prefix + "/" + dataset + "_lowcov_query_labels.txt" << std::endl;
+      std::cout << "Vectors written to: " << output_prefix + "/" + dataset + "_lowcov_query.fvecs" << std::endl;
+
+      // 输出统计信息
+      if (!valid_low_coverage_sets.empty())
+      {
+         std::cout << "\nStatistics of generated low-coverage queries:" << std::endl;
+         std::cout << "Min coverage: " << valid_low_coverage_sets.front().coverage << std::endl;
+         std::cout << "Max coverage: " << valid_low_coverage_sets.back().coverage << std::endl;
+         std::cout << "Median coverage: "
+                   << valid_low_coverage_sets[valid_low_coverage_sets.size() / 2].coverage << std::endl;
+      }
    }
 
    // ===================================end：生成query task========================================

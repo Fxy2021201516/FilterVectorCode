@@ -54,14 +54,12 @@ for i in $(seq 1 $query_num); do
     query_path="../../FilterVectorData/${dataset}/query_${i}"
     base_label_path="../../FilterVectorData/${dataset}/base_${i}" 
 
-    for repeat in $(seq 1 $repeat_num); do
-       csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat}.csv" 
-       avg_csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat}_avg.csv"
-       dis_output_path="${parent_dir}/dis_output"
+    csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}.csv" 
+    avg_csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}_avg.csv"
+    dis_output_path="${parent_dir}/dis_output"
 
-       echo "运行测试: 数据集=${dataset}, 查询=${i}, gamma=${gamma}, M=${M}, 线程=${threads}, 重复=${repeat}"
-       ./build_$dataset/demos/test_acorn $N $gamma $dataset $M $M_beta "$base_path" "$base_label_path" "$query_path" "$csv_path" "$avg_csv_path" "$dis_output_path" "$threads" "$repeat_num" "$efs_list"&>> "${parent_dir}/output_log.log"
-    done
+    echo "运行测试: 数据集=${dataset}, 查询=${i}, gamma=${gamma}, M=${M}, 线程=${threads}, 重复=${repeat_num}"
+    ./build_$dataset/demos/test_acorn $N $gamma $dataset $M $M_beta "$base_path" "$base_label_path" "$query_path" "$csv_path" "$avg_csv_path" "$dis_output_path" "$threads" "$repeat_num" "$efs_list"&>> "${parent_dir}/output_log.log"
 done
 
 echo "测试完成! 结果保存在: ${parent_dir}"

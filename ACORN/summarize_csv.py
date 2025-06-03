@@ -39,16 +39,15 @@ def process_avg_files(input_folder, output_file):
     grouped_df.to_csv(Path(input_folder) / output_file, index=False)
     print(f"avg文件处理完成，结果保存到: {output_file}")
 
-def main(input_dir, output_dir, dataset, gamma, M, threads):
-   file_name = f"results_{dataset}_gamma{gamma}_M{M}_threads{threads}"
+def main(input_dir, output_dir, dataset, gamma, M, threads,repeat_num):
+   file_name = f"results_{dataset}_gamma{gamma}_M{M}_threads{threads}_repeat{repeat_num}"
    process_non_avg_files(output_dir, file_name + '.csv')
    process_avg_files(output_dir, file_name + '_avg.csv')
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:
-        print("用法: python script.py <input_dir> <output_dir> <dataset> <gamma> <M> <threads>")
-        print("示例: python script.py results output words 80 32 32")
+        print("用法: python script.py <input_dir> <output_dir> <dataset> <gamma> <M> <threads> <repeat_num>")
         sys.exit(1)
 
     input_dir = sys.argv[1]
@@ -57,5 +56,6 @@ if __name__ == "__main__":
     gamma = sys.argv[4]
     M = sys.argv[5]
     threads = sys.argv[6]
+    repeat_num = sys.argv[7]
 
-    main(input_dir, output_dir, dataset, gamma, M, threads)
+    main(input_dir, output_dir, dataset, gamma, M, threads,repeat_num)

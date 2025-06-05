@@ -1853,7 +1853,7 @@ namespace ANNS
       size_t total_queries = 0;
 
       // min(7000个查询,_num_groups)
-      total_queries = std::min(7000, int(_num_groups));
+      total_queries = std::min(300, int(_num_groups));
       for (ANNS::IdxType group_id = 1; group_id <= total_queries; ++group_id)
       {
          // std::cout << "group_id: " << group_id << std::endl;
@@ -1996,7 +1996,7 @@ namespace ANNS
       for (int i = 1; i <= num_sets; ++i)
       {
          std::cout << "Generating query set " << i << "..." << std::endl;
-         std::string folder_name = base_output_path + "/" + dataset + "_query_" + std::to_string(i);
+         std::string folder_name = base_output_path;
 
          // 创建目录（包括所有必要的父目录）
          fs::create_directories(folder_name);
@@ -2210,6 +2210,7 @@ namespace ANNS
 
       // Step 3: 生成查询文件和标签
       std::ofstream txt_file(output_prefix + "/" + dataset + "_query_labels.txt");
+      std::ofstream txt__coverage_file(output_prefix + "/" + dataset + "_query_and_coverage_labels.txt");
       std::ofstream fvec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
 
       if (!txt_file.is_open() || !fvec_file.is_open())
@@ -2236,9 +2237,14 @@ namespace ANNS
             txt_file << label_set[j];
             if (j != label_set.size() - 1)
                txt_file << ",";
+
+            txt__coverage_file << label_set[j];
+            if (j != label_set.size() - 1)
+               txt__coverage_file << ",";
          }
-         // txt_file << " coverage:" << valid_low_coverage_sets[i].coverage;
+         txt__coverage_file << " coverage:" << valid_low_coverage_sets[i].coverage;
          txt_file << std::endl;
+         txt__coverage_file << std::endl;
 
          // 随机选择一个向量（确保不重复）
          ANNS::IdxType vec_id;
@@ -2259,6 +2265,7 @@ namespace ANNS
       }
 
       txt_file.close();
+      txt__coverage_file.close();
       fvec_file.close();
 
       std::cout << "Generated " << queries_generated << " low-coverage queries with 0 < coverage <= "

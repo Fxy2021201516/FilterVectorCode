@@ -369,6 +369,7 @@ namespace faiss
        std::vector<double> *query_times, // 记录每个查询耗时（毫秒/秒）
        std::vector<double> *query_qps,   // 记录每个查询QPS
        std::vector<size_t> *query_n3,    // 记录每个查询的n3
+       bool if_bfs_filter,
        const SearchParameters *params_in) const
    {
       // omp_set_num_threads(32); // thread=32
@@ -424,6 +425,7 @@ namespace faiss
                    simi,
                    vt,
                    filters,
+                   if_bfs_filter,
                    params); // TODO edit to hybrid search
                // std::cout << "end hybrid search" << std::endl;
 

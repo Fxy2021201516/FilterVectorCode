@@ -1427,6 +1427,7 @@ namespace faiss
           MinimaxHeap &candidates,
           VisitedTable &vt,
           ACORNStats &stats,
+          bool if_bfs_filter,
           int level,
           int nres_in = 0,
           const SearchParametersACORN *params = nullptr)
@@ -1434,7 +1435,6 @@ namespace faiss
          //  std::cout << "hybrid_search_from_candidates" << std::endl;
          int nres = nres_in;
          int ndis = 0;
-         bool if_bfs_filter = true;
 
          // can be overridden by search params
          bool do_dis_check = params ? params->check_relative_distance
@@ -1827,6 +1827,7 @@ namespace faiss
        float *D,
        VisitedTable &vt,
        char *filter_map,
+       bool if_bfs_filter,
        // int filter,
        // Operation op,
        // std::string regex,
@@ -1877,6 +1878,7 @@ namespace faiss
                 candidates,
                 vt,
                 stats,
+                if_bfs_filter,
                 0,
                 0,
                 params);
@@ -1928,6 +1930,7 @@ namespace faiss
                    candidates,
                    vt,
                    stats,
+                   if_bfs_filter,
                    0);
             }
             else
@@ -1945,6 +1948,7 @@ namespace faiss
                    candidates,
                    vt,
                    stats,
+                   if_bfs_filter,
                    level);
             }
             vt.advance();

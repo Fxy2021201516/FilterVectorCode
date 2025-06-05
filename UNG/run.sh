@@ -97,11 +97,11 @@ mkdir -p "$RESULT_DIR"
     --index_path_prefix "$OUTPUT_DIR/index_files/" \
     --result_path_prefix "$RESULT_DIR/" \
     --scenario general \
-    --generate_query false --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
+    --generate_query true --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
     --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
 
 # Step6:转换查询数据格式
-for ((i=1; i<=NUM_QUERY_SETS; i++))
+for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))
 do
     INPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.fvecs"
     OUTPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin"
@@ -111,7 +111,7 @@ do
 done
 
 # Step7:生成gt
-for ((i=1; i<=NUM_QUERY_SETS; i++))
+for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))
 do
     ./"$BUILD_DIR"/tools/compute_groundtruth \
         --data_type float --dist_fn L2 --scenario containment --K "$K" --num_threads "$NUM_THREADS" \
@@ -129,7 +129,7 @@ done
 echo -e "All ground truth files generated successfully!"
 
 # Step8:执行搜索
-for ((i=1; i<=NUM_QUERY_SETS; i++))
+for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))
 do    
     echo -e "\nRunning query$i..."
     QUERY_DIR="$DATA_DIR/query_${NUM_QUERY_SETS}"

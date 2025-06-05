@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
    double acorn_build_time = 0.0, acorn_1_build_time = 0.0;
    std::vector<int> efs_list;
    int efs_cnt = 0;
+   bool if_bfs_filter = true; // true:ACORN原始的
 
    int opt;
    { // parse arguments
@@ -148,7 +149,10 @@ int main(int argc, char *argv[])
       repeat_num = atoi(argv[13]);
       printf("repeat_num: %d\n", repeat_num);
 
-      char *efs_list_str = argv[14];
+      if_bfs_filter = atoi(argv[14]);
+      printf("if_bfs_filter: %d\n", if_bfs_filter);
+
+      char *efs_list_str = argv[15];
       printf("Raw efs_list string: %s\n", efs_list_str);
       char *token = strtok(efs_list_str, ",");
       while (token != NULL)
@@ -411,6 +415,7 @@ int main(int argc, char *argv[])
             avg_query_results[repeat][efs_id][0].filter_time = (t_filter_1 - t_filter_0);
          }
       }
+      std::cout << "filter_ids_map created. " << std::endl;
 
       for (int repeat = 0; repeat < repeat_num; repeat++)
       {
@@ -431,8 +436,8 @@ int main(int argc, char *argv[])
                 filter_ids_map.data(),
                 &query_times, // 传入时间记录
                 &query_qps,   // 传入QPS记录
-                &query_n3     // 传入n3记录
-            );
+                &query_n3,    // 传入n3记录
+                if_bfs_filter);
             double t2_x = elapsed();
 
             printf("[%.3f s] Query results (vector ids, then distances):\n",
@@ -443,48 +448,46 @@ int main(int argc, char *argv[])
                    elapsed() - t0,
                    search_time,
                    qps);
-            // 打印每个查询的n3、时间和QPS
-            for (int i = 0; i < nq; i++)
-            {
-               printf("Query %ld: n3=%zu, Time=%.6f s, QPS=%.3f\n",
-                      i, query_n3[i], query_times[i], query_qps[i]);
-            }
-
+            // // 打印每个查询的n3、时间和QPS
+            // for (int i = 0; i < nq; i++)
+            // {
+            //    printf("Query %ld: n3=%zu, Time=%.6f s, QPS=%.3f\n",
+            //           i, query_n3[i], query_times[i], query_qps[i]);
+            // }
             // 打印前10个查询结果
-            int nq_print = std::min(10, (int)nq);
-            for (int i = 0; i < nq_print; i++)
-            {
-               printf("query %2d nn's: [", i);
-               for (size_t attr = 0; attr < aq[i].size(); attr++)
-               {
-                  printf("%d%s",
-                         aq[i][attr],
-                         attr < aq[i].size() - 1 ? ", " : "");
-               }
-               printf("]: ");
-               for (int j = 0; j < k; j++)
-               {
-                  printf("%7ld [", nns2[j + i * k]);
-                  const auto &meta_vec = metadata[nns2[j + i * k]];
-                  for (size_t attr = 0; attr < meta_vec.size(); attr++)
-                  {
-                     printf("%d%s",
-                            meta_vec[attr],
-                            attr < meta_vec.size() - 1 ? ", " : "");
-                  }
-                  printf("] ");
-               }
-               printf("\n     dis: \t");
-               for (int j = 0; j < k; j++)
-               {
-                  printf("%7g ", dis2[j + i * k]);
-               }
-               printf("\n");
-            }
+            // int nq_print = std::min(10, (int)nq);
+            // for (int i = 0; i < nq_print; i++)
+            // {
+            //    printf("query %2d nn's: [", i);
+            //    for (size_t attr = 0; attr < aq[i].size(); attr++)
+            //    {
+            //       printf("%d%s",
+            //              aq[i][attr],
+            //              attr < aq[i].size() - 1 ? ", " : "");
+            //    }
+            //    printf("]: ");
+            //    for (int j = 0; j < k; j++)
+            //    {
+            //       printf("%7ld [", nns2[j + i * k]);
+            //       const auto &meta_vec = metadata[nns2[j + i * k]];
+            //       for (size_t attr = 0; attr < meta_vec.size(); attr++)
+            //       {
+            //          printf("%d%s",
+            //                 meta_vec[attr],
+            //                 attr < meta_vec.size() - 1 ? ", " : "");
+            //       }
+            //       printf("] ");
+            //    }
+            //    printf("\n     dis: \t");
+            //    for (int j = 0; j < k; j++)
+            //    {
+            //       printf("%7g ", dis2[j + i * k]);
+            //    }
+            //    printf("\n");
+            // }
 
             //==============计算recall==========================
             double t_recall_0 = elapsed();
-
             float *all_distances = new float[nq * N]; // 存储距离结果
             std::vector<std::vector<std::pair<int, float>>> sorted_results;
             if (repeat == 0 && efs_id == 0)
@@ -517,7 +520,6 @@ int main(int argc, char *argv[])
             std::cout << "recall_mean: " << recall_mean << std::endl;
             printf("ACORN: Recall: %.2f\n", recall_mean);
             double t_recall_1 = elapsed();
-            // printf("[%.3f s] cal Recall time: %f seconds\n",elapsed() - t0,t_recall_1 - t_recall_0);
 
             for (int i = 0; i < nq; i++)
             {
@@ -631,7 +633,8 @@ int main(int argc, char *argv[])
                 filter_ids_map3.data(),
                 &query_times3,
                 &query_qps3,
-                &query_n33);
+                &query_n33,
+                if_bfs_filter);
             double t2_x = elapsed();
 
             printf("[%.3f s] Query results (vector ids, then distances):\n",
@@ -642,43 +645,42 @@ int main(int argc, char *argv[])
                    elapsed() - t0,
                    search_time,
                    qps);
-            // 打印每个查询的n3、时间和QPS
-            for (int i = 0; i < nq; i++)
-            {
-               printf("Query %ld: n3=%zu, Time=%.6f s, QPS=%.3f\n",
-                      i, query_n33[i], query_times3[i], query_qps3[i]);
-            }
-
-            int nq_print = std::min(10, (int)nq);
-            for (int i = 0; i < nq_print; i++)
-            {
-               printf("query %2d nn's: [", i);
-               for (size_t attr = 0; attr < aq[i].size(); attr++)
-               {
-                  printf("%d%s",
-                         aq[i][attr],
-                         attr < aq[i].size() - 1 ? ", " : "");
-               }
-               printf("]: ");
-               for (int j = 0; j < k; j++)
-               {
-                  printf("%7ld [", nns3[j + i * k]);
-                  const auto &meta_vec = metadata[nns3[j + i * k]];
-                  for (size_t attr = 0; attr < meta_vec.size(); attr++)
-                  {
-                     printf("%d%s",
-                            meta_vec[attr],
-                            attr < meta_vec.size() - 1 ? ", " : "");
-                  }
-                  printf("] ");
-               }
-               printf("\n     dis: \t");
-               for (int j = 0; j < k; j++)
-               {
-                  printf("%7g ", dis3[j + i * k]);
-               }
-               printf("\n");
-            }
+            // // 打印每个查询的n3、时间和QPS
+            // for (int i = 0; i < nq; i++)
+            // {
+            //    printf("Query %ld: n3=%zu, Time=%.6f s, QPS=%.3f\n",
+            //           i, query_n33[i], query_times3[i], query_qps3[i]);
+            // }
+            // int nq_print = std::min(10, (int)nq);
+            // for (int i = 0; i < nq_print; i++)
+            // {
+            //    printf("query %2d nn's: [", i);
+            //    for (size_t attr = 0; attr < aq[i].size(); attr++)
+            //    {
+            //       printf("%d%s",
+            //              aq[i][attr],
+            //              attr < aq[i].size() - 1 ? ", " : "");
+            //    }
+            //    printf("]: ");
+            //    for (int j = 0; j < k; j++)
+            //    {
+            //       printf("%7ld [", nns3[j + i * k]);
+            //       const auto &meta_vec = metadata[nns3[j + i * k]];
+            //       for (size_t attr = 0; attr < meta_vec.size(); attr++)
+            //       {
+            //          printf("%d%s",
+            //                 meta_vec[attr],
+            //                 attr < meta_vec.size() - 1 ? ", " : "");
+            //       }
+            //       printf("] ");
+            //    }
+            //    printf("\n     dis: \t");
+            //    for (int j = 0; j < k; j++)
+            //    {
+            //       printf("%7g ", dis3[j + i * k]);
+            //    }
+            //    printf("\n");
+            // }
 
             //==============计算recall==========================
             auto sorted_results = read_all_sorted_filtered_distances_from_txt(

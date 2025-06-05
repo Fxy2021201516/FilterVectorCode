@@ -116,9 +116,9 @@ int main(int argc, char **argv)
       // 生成查询标签和查询向量：(文件名，每个group中有几个查询向量, 每个属性的概率, 是否分层抽样, 是否验证是子集)
       std::cout << "Generating query file ..." << std::endl;
       std::cout << "Query file path: " << query_file_path << std::endl;
-      // index.generate_multiple_queries(dataset, index, query_file_path, 10, 1, 0.5f, false, true);
-      index.generatePowerSetToFile(query_file_path, dataset, 2, 300);
-      index.generateLowCoverageQueriesToFile(query_file_path, dataset, 300, base_label_file, 6, 0.1f);
+      index.generate_multiple_queries(dataset, index, query_file_path, 1, 1, 0.5f, false, true);
+      // index.generatePowerSetToFile(query_file_path, dataset, 2, 300); //极端数据方法1-高覆盖率
+      // index.generateLowCoverageQueriesToFile(query_file_path, dataset, 300, base_label_file, 2, 0.1f); // 极端数据方法1-低覆盖率
    }
 
    return 0;

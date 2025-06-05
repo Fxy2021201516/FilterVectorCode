@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 参数检查
-if [ "$#" -ne 9 ]; then
-    echo "用法: $0 <dataset_name> <N> <M> <M_beta> <gamma> <query_num> <threads> <efs_list> <repeat_num>"
+if [ "$#" -ne 10 ]; then
+    echo "用法: $0 <dataset_name> <N> <M> <M_beta> <gamma> <query_num> <threads> <efs_list> <repeat_num> <if_bfs_filter>"
     exit 1
 fi
 
@@ -15,6 +15,7 @@ query_num=$6
 threads=$7
 efs_list=$8
 repeat_num=$9
+if_bfs_filter=${10}
 
 # 清理旧构建
 rm -rf build_$dataset
@@ -29,7 +30,7 @@ make -C build_$dataset test_acorn
 # 测试配置
 ##########################################
 now=$(date +"%Y%m%d_%H%M%S")
-parent_dir="../../FilterVectorResults/ACORN/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}"
+parent_dir="../../FilterVectorResults/ACORN/${dataset}/${dataset}_query${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}_ifbfs${if_bfs_filter}"
 mkdir -p $parent_dir
 results="${parent_dir}/results"
 mkdir -p "$results"
@@ -44,22 +45,25 @@ echo "M_beta: $M_beta" >> $config_file
 echo "gamma: $gamma" >> $config_file
 echo "查询数量: $query_num" >> $config_file
 echo "线程数: $threads" >> $config_file
+echo "EFS列表: $efs_list" >> $config_file
+echo "重复次数: $repeat_num" >> $config_file
+echo "是否使用BFS过滤: $if_bfs_filter" >> $config_file
 echo "实验时间: $now" >> $config_file
 
 ##########################################
 # 运行测试
 ##########################################
 base_path="../../FilterVectorData/${dataset}" # base vector dir
-for i in $(seq 1 $query_num); do
+for i in $(seq $query_num $query_num); do
     query_path="../../FilterVectorData/${dataset}/query_${i}"
     base_label_path="../../FilterVectorData/${dataset}/base_${i}" 
 
-    csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}.csv" 
-    avg_csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}_avg.csv"
+    csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}_ifbfs${if_bfs_filter}.csv" 
+    avg_csv_path="${results}/${dataset}_query_${query_num}_M${M}_gamma${gamma}_threads${threads}_repeat${repeat_num}_ifbfs${if_bfs_filter}_avg.csv"
     dis_output_path="${parent_dir}/dis_output"
 
-    echo "运行测试: 数据集=${dataset}, 查询=${i}, gamma=${gamma}, M=${M}, 线程=${threads}, 重复=${repeat_num}"
-    ./build_$dataset/demos/test_acorn $N $gamma $dataset $M $M_beta "$base_path" "$base_label_path" "$query_path" "$csv_path" "$avg_csv_path" "$dis_output_path" "$threads" "$repeat_num" "$efs_list"&>> "${parent_dir}/output_log.log"
+    echo "运行测试: 数据集=${dataset}, 查询=query${i}, gamma=${gamma}, M=${M}, 线程=${threads}, 重复次数=${repeat_num},if_bfs_filter=${if_bfs_filter}, EFS列表=${efs_list}"
+    ./build_$dataset/demos/test_acorn $N $gamma $dataset $M $M_beta "$base_path" "$base_label_path" "$query_path" "$csv_path" "$avg_csv_path" "$dis_output_path" "$threads" "$repeat_num" "$if_bfs_filter" "$efs_list"&>> "${parent_dir}/output_log.log"
 done
 
 echo "测试完成! 结果保存在: ${parent_dir}"

@@ -248,4 +248,4 @@ def run_example(dataset_name="arxiv", n=20, m=4, k=8, required_attrs=[0, 1, 2], 
 
 if __name__ == "__main__":
     # 生成n个向量，每个m个属性，属性值范围0-k,要求属性required_attrs在每个group中的覆盖率至少min_coverage
-    results_arxiv = run_example("arxiv", n=157606, m=8, k=50, required_attrs=[1,2,3,4], min_coverage=0.5)
+    results_arxiv = run_example("arxiv", n=157606, m=9, k=100, required_attrs=[1,2,3,4], min_coverage=0.7)

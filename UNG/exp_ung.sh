@@ -31,7 +31,9 @@ cat "$CONFIG_FILE" | jq -c '.experiments[]' | while read -r experiment; do
         --build_dir "build_$dataset" \
         --num_threads "$(echo "$experiment" | jq -r '.num_threads')" \
         --K "$(echo "$experiment" | jq -r '.K')" \
-        --num_repeats "$(echo "$experiment" | jq -r '.num_repeats')"
+        --num_repeats "$(echo "$experiment" | jq -r '.num_repeats')" \
+        --generate_query "$(echo "$experiment" | jq -r '.generate_query')" \
+        --generate_query_task "$(echo "$experiment" | jq -r '.generate_query_task')" 
    
     echo "数据集 $dataset 处理完成"
     echo "============================================"

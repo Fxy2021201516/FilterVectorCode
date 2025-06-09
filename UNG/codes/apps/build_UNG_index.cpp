@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 {
 
    // common auguments
-   std::string data_type, dist_fn, base_bin_file, base_label_file, index_path_prefix, result_path_prefix;
+   std::string data_type, dist_fn, base_bin_file, base_label_file, base_label_info_file, index_path_prefix, result_path_prefix;
    uint32_t num_threads;
    ANNS::IdxType num_cross_edges;
 
@@ -21,6 +21,7 @@ int main(int argc, char **argv)
 
    // if query file is not provided, generate query file
    bool generate_query;
+   std::string generate_query_task;
    std::string query_file_path;
    std::string dataset;
 
@@ -38,6 +39,8 @@ int main(int argc, char **argv)
                          "File containing the base vectors in binary format");
       desc.add_options()("base_label_file", po::value<std::string>(&base_label_file)->required(),
                          "Base label file in txt format");
+      desc.add_options()("base_label_info_file", po::value<std::string>(&base_label_info_file)->required(),
+                         "Base label info file in log format");
       desc.add_options()("num_threads", po::value<uint32_t>(&num_threads)->default_value(1),
                          "Number of threads to use");
       desc.add_options()("index_path_prefix", po::value<std::string>(&index_path_prefix)->required(),
@@ -62,6 +65,8 @@ int main(int argc, char **argv)
       // query file
       desc.add_options()("generate_query", po::value<bool>(&generate_query)->required(),
                          "Whether to generate query file");
+      desc.add_options()("generate_query_task", po::value<std::string>(&generate_query_task)->required(),
+                         "generate_query_task");
       desc.add_options()("query_file_path", po::value<std::string>(&query_file_path)->default_value("my_words_query"),
                          "Query label file");
       desc.add_options()("dataset", po::value<std::string>(&dataset)->required(),
@@ -116,9 +121,27 @@ int main(int argc, char **argv)
       // 生成查询标签和查询向量：(文件名，每个group中有几个查询向量, 每个属性的概率, 是否分层抽样, 是否验证是子集)
       std::cout << "Generating query file ..." << std::endl;
       std::cout << "Query file path: " << query_file_path << std::endl;
-      index.generate_multiple_queries(dataset, index, query_file_path, 1, 1, 0.5f, false, true);
-      // index.generatePowerSetToFile(query_file_path, dataset, 2, 300); //极端数据方法1-高覆盖率
-      // index.generateLowCoverageQueriesToFile(query_file_path, dataset, 300, base_label_file, 2, 0.1f); // 极端数据方法1-低覆盖率
+      // index.generate_multiple_queries(dataset, index, query_file_path, 1, 1, 0.5f, false, true); //根据LNG的group生成查询任务
+      if (generate_query_task == "method1_high_coverage") // 极端数据方法1-高覆盖率
+      {
+         index.generate_queries_method1_high_coverage(query_file_path, dataset, 3, 1000);
+      }
+      else if (generate_query_task == "method1_low_coverage") // 极端数据方法1-低覆盖率
+      {
+         index.generate_queries_method1_low_coverage(query_file_path, dataset, 1000, base_label_file, 7, 0.1f, 10);
+      }
+      else if (generate_query_task == "method2_high_coverage") // 极端数据方法2-高覆盖率
+      {
+         index.generate_queries_method2_high_coverage(query_file_path, dataset, 1000, base_label_file, base_label_info_file);
+      }
+      else if (generate_query_task == "method2_low_coverage") // 极端数据方法2-低覆盖率
+      {
+         index.generate_queries_method2_low_coverage(query_file_path, dataset, 1000, base_label_file, 7, 10, 50, 5);
+      }
+      else
+      {
+         std::cout << "Error in generate_query_task" << std::endl;
+      }
    }
 
    return 0;

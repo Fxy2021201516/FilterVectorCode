@@ -2008,8 +2008,8 @@ namespace ANNS
       }
    }
 
-   // fxy_add:根据幂集，生成多个查询任务
-   void UniNavGraph::generatePowerSetToFile(std::string &output_prefix, std::string dataset, int m, int query_n)
+   // fxy_add:极端方法1数据，生成覆盖率高的查询任务
+   void UniNavGraph::generate_queries_method1_high_coverage(std::string &output_prefix, std::string dataset, int m, int query_n)
    {
       // Step1: 生成所有非空子集(幂集)
       std::vector<std::vector<int>> all_subsets;
@@ -2097,14 +2097,15 @@ namespace ANNS
       std::cout << "Corresponding labels written to " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
    }
 
-   // fxy_add:生成覆盖率低的查询任务
-   void UniNavGraph::generateLowCoverageQueriesToFile(
+   // fxy_add:极端方法1数据，生成覆盖率低的查询任务
+   void UniNavGraph::generate_queries_method1_low_coverage(
        std::string &output_prefix,
        std::string dataset,
        int query_n,
        std::string &base_label_file,
        int num_of_per_query_labels,
-       float coverage_threshold)
+       float coverage_threshold,
+       int K)
    {
       // Step 1: 从标签文件加载并分析标签分布
       std::ifstream label_file(base_label_file);
@@ -2187,7 +2188,7 @@ namespace ANNS
             continue;
 
          float coverage = static_cast<float>(entry.second) / total_vectors;
-         if (coverage <= coverage_threshold)
+         if (coverage <= coverage_threshold && entry.second >= K)
          {
             valid_low_coverage_sets.push_back({entry.first, entry.second, coverage});
          }
@@ -2281,6 +2282,370 @@ namespace ANNS
          std::cout << "Max coverage: " << valid_low_coverage_sets.back().coverage << std::endl;
          std::cout << "Median coverage: "
                    << valid_low_coverage_sets[valid_low_coverage_sets.size() / 2].coverage << std::endl;
+      }
+   }
+
+   // fxy_add: 极端方法2的查询任务生成：根据LNG树的深度信息生成查询任务
+   void UniNavGraph::generate_queries_method2_high_coverage(
+       std::string &output_prefix,
+       std::string dataset,
+       int query_n,
+       std::string &base_label_file,
+       std::string &base_label_info_file)
+   {
+      // Step 1: 读取LNG树信息文件获取总层数
+      std::ifstream info_file(base_label_info_file);
+      if (!info_file.is_open())
+      {
+         std::cerr << "Failed to open LNG info file: " << base_label_info_file << std::endl;
+         return;
+      }
+
+      int total_layers = 0;
+      std::string line;
+      while (std::getline(info_file, line))
+      {
+         if (line.find("总层数:") != std::string::npos)
+         {
+            size_t pos = line.find(":");
+            if (pos != std::string::npos)
+            {
+               total_layers = std::stoi(line.substr(pos + 1));
+               break;
+            }
+         }
+      }
+      info_file.close();
+
+      if (total_layers == 0)
+      {
+         std::cerr << "Error: Could not determine total layers from LNG info file" << std::endl;
+         return;
+      }
+
+      // 计算顶层深度
+      // int max_depth_top = std::max(1, total_layers / 10);
+      int max_depth_top = 3;
+      std::cout << "Total layers: " << total_layers << ", Top layers to use: " << max_depth_top << std::endl;
+
+      // Step 2: 读取base_labels文件获取顶层标签
+      std::ifstream label_file(base_label_file);
+      if (!label_file.is_open())
+      {
+         std::cerr << "Failed to open base label file: " << base_label_file << std::endl;
+         return;
+      }
+
+      std::vector<std::vector<int>> top_layer_labels;
+      int lines_read = 0;
+      while (std::getline(label_file, line) && lines_read < max_depth_top)
+      {
+         std::vector<int> labels;
+         std::stringstream ss(line);
+         std::string label_str;
+
+         while (std::getline(ss, label_str, ','))
+         {
+            labels.push_back(std::stoi(label_str));
+         }
+
+         if (!labels.empty())
+         {
+            top_layer_labels.push_back(labels);
+            lines_read++;
+         }
+      }
+      label_file.close();
+
+      if (top_layer_labels.empty())
+      {
+         std::cerr << "Error: No valid labels found in base label file" << std::endl;
+         return;
+      }
+
+      // Step 3: 准备输出文件
+      std::ofstream txt_file(output_prefix + "/" + dataset + "_query_labels.txt");
+      std::ofstream fvec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
+
+      if (!txt_file.is_open() || !fvec_file.is_open())
+      {
+         std::cerr << "Failed to open output files" << std::endl;
+         return;
+      }
+
+      uint32_t dim = _base_storage->get_dim();
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_int_distribution<ANNS::IdxType> vec_dis(0, _base_storage->get_num_points() - 1);
+      std::unordered_set<ANNS::IdxType> used_vec_ids;
+
+      // Step 4: 生成查询任务
+      int queries_generated = 0;
+      while (queries_generated < query_n)
+      {
+         // 循环使用顶层标签
+         const auto &labels = top_layer_labels[queries_generated % top_layer_labels.size()];
+
+         // 写入标签文件
+         for (size_t j = 0; j < labels.size(); ++j)
+         {
+            txt_file << labels[j];
+            if (j != labels.size() - 1)
+            {
+               txt_file << ",";
+            }
+         }
+         txt_file << std::endl;
+
+         // 随机选择一个不重复的向量
+         ANNS::IdxType vec_id;
+         do
+         {
+            vec_id = vec_dis(gen);
+         } while (used_vec_ids.count(vec_id) > 0 &&
+                  used_vec_ids.size() < _base_storage->get_num_points());
+
+         used_vec_ids.insert(vec_id);
+         const char *vec_data = _base_storage->get_vector(vec_id);
+
+         // 写入向量文件
+         fvec_file.write((char *)&dim, sizeof(uint32_t));
+         fvec_file.write(vec_data, dim * sizeof(float));
+
+         queries_generated++;
+      }
+
+      txt_file.close();
+      fvec_file.close();
+
+      std::cout << "Generated " << queries_generated << " queries based on LNG depth" << std::endl;
+      std::cout << "Labels written to: " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
+      std::cout << "Vectors written to: " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
+   }
+
+   // fxy_add: 极端方法2的查询任务生成低覆盖率的查询任务（基于 count ∈ [K, max_K]）
+   void UniNavGraph::generate_queries_method2_low_coverage(
+       std::string &output_prefix,
+       std::string dataset,
+       int query_n,
+       std::string &base_label_file,
+       int num_of_per_query_labels,
+       int K,
+       int max_K,
+       int min_K)
+   {
+      // Step 1: 加载标签文件并统计每个标签的频率
+      std::ifstream label_file(base_label_file);
+      if (!label_file.is_open())
+      {
+         std::cerr << "Failed to open label file: " << base_label_file << std::endl;
+         return;
+      }
+
+      std::unordered_map<int, int> label_counts;
+      std::vector<std::vector<int>> all_label_sets;
+      std::string line;
+
+      while (std::getline(label_file, line))
+      {
+         std::vector<int> labels;
+         std::stringstream ss(line);
+         std::string label_str;
+
+         while (std::getline(ss, label_str, ','))
+         {
+            int label = std::stoi(label_str);
+            labels.push_back(label);
+            label_counts[label]++;
+         }
+
+         std::sort(labels.begin(), labels.end());
+         all_label_sets.push_back(labels);
+      }
+      label_file.close();
+
+      if (all_label_sets.empty())
+      {
+         std::cerr << "No label data found, using default label 1" << std::endl;
+         all_label_sets.push_back({1});
+         label_counts[1] = 1;
+      }
+
+      // Step 2: 按照标签频率排序（低频优先）
+      std::vector<std::pair<int, int>> label_freq_pairs; // <label_id, count>
+      for (const auto &entry : label_counts)
+      {
+         label_freq_pairs.push_back({entry.first, entry.second});
+      }
+
+      std::sort(label_freq_pairs.begin(), label_freq_pairs.end(),
+                [](const auto &a, const auto &b)
+                {
+                   return a.second < b.second;
+                });
+
+      std::vector<int> sorted_labels;
+      for (const auto &p : label_freq_pairs)
+      {
+         sorted_labels.push_back(p.first);
+      }
+
+      // Step 3: 枚举低频标签组合，并筛选满足 [K, max_K] 条件的组合
+      struct LabelSetInfo
+      {
+         std::vector<int> labels;
+         int count;
+         float coverage;
+      };
+
+      std::vector<LabelSetInfo> valid_combinations;
+      int total_vectors = all_label_sets.size();
+      std::unordered_set<std::string> seen_combinations;
+
+      size_t n = sorted_labels.size();
+
+      // 从前往后尝试不同长度的组合
+      for (size_t start_idx = 0; start_idx < n && valid_combinations.size() < min_K; ++start_idx)
+      {
+         for (int k = 1; k <= num_of_per_query_labels && k <= n - start_idx; ++k)
+         {
+            std::vector<int> candidate_combination;
+            for (int i = 0; i < k; ++i)
+            {
+               candidate_combination.push_back(sorted_labels[start_idx + i]);
+            }
+
+            // 去重处理
+            std::vector<int> sorted_combo = candidate_combination;
+            std::sort(sorted_combo.begin(), sorted_combo.end());
+            std::string combo_key;
+            for (int l : sorted_combo)
+               combo_key += std::to_string(l) + ",";
+            if (seen_combinations.count(combo_key))
+               continue;
+            seen_combinations.insert(combo_key);
+
+            // 统计该组合在数据集中出现的次数
+            int occurrence = 0;
+            for (const auto &labels : all_label_sets)
+            {
+               bool match = true;
+               for (int label : candidate_combination)
+               {
+                  if (std::find(labels.begin(), labels.end(), label) == labels.end())
+                  {
+                     match = false;
+                     break;
+                  }
+               }
+               if (match)
+                  ++occurrence;
+            }
+
+            // 筛选条件：出现次数 ∈ [K, max_K]
+            if (occurrence >= K && occurrence <= max_K)
+            {
+               valid_combinations.push_back({candidate_combination,
+                                             occurrence,
+                                             static_cast<float>(occurrence) / total_vectors});
+               if (valid_combinations.size() >= min_K)
+                  break;
+            }
+         }
+         if (valid_combinations.size() >= min_K)
+            break;
+      }
+
+      if (valid_combinations.empty())
+      {
+         std::cerr << "Error: No valid label combinations found with count in range ["
+                   << K << ", " << max_K << "]" << std::endl;
+         return;
+      }
+
+      // Step 4: 写入输出文件
+      std::ofstream txt_file(output_prefix + "/" + dataset + "_query_labels.txt");
+      std::ofstream txt__coverage_file(output_prefix + "/" + dataset + "_query_and_coverage_labels.txt");
+      std::ofstream fvec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
+
+      if (!txt_file.is_open() || !fvec_file.is_open())
+      {
+         std::cerr << "Failed to open output files." << std::endl;
+         return;
+      }
+
+      uint32_t dim = _base_storage->get_dim();
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_int_distribution<int> combo_dis(0, valid_combinations.size() - 1);
+      std::uniform_int_distribution<ANNS::IdxType> vec_dis(0, _base_storage->get_num_points() - 1);
+      std::unordered_set<ANNS::IdxType> used_vec_ids;
+
+      int queries_generated = 0;
+      while (queries_generated < query_n)
+      {
+         const auto &item = valid_combinations[combo_dis(gen)];
+         const auto &labels = item.labels;
+
+         ANNS::IdxType vec_id;
+         do
+         {
+            vec_id = vec_dis(gen);
+         } while (used_vec_ids.count(vec_id) > 0 &&
+                  used_vec_ids.size() < _base_storage->get_num_points());
+
+         if (used_vec_ids.size() >= _base_storage->get_num_points())
+         {
+            std::cerr << "Not enough unique vectors to generate queries." << std::endl;
+            break;
+         }
+
+         used_vec_ids.insert(vec_id);
+         const char *vec_data = _base_storage->get_vector(vec_id);
+
+         // 写入标签
+         for (size_t j = 0; j < labels.size(); ++j)
+         {
+            txt_file << labels[j];
+            txt__coverage_file << labels[j];
+            if (j != labels.size() - 1)
+            {
+               txt_file << ",";
+               txt__coverage_file << ",";
+            }
+         }
+         txt__coverage_file << " count:" << item.count;
+         txt_file << std::endl;
+         txt__coverage_file << std::endl;
+
+         // 写入向量
+         fvec_file.write((char *)&dim, sizeof(uint32_t));
+         fvec_file.write(vec_data, dim * sizeof(float));
+
+         queries_generated++;
+      }
+
+      txt_file.close();
+      txt__coverage_file.close();
+      fvec_file.close();
+
+      std::cout << "Generated " << queries_generated << " queries with count in range ["
+                << K << ", " << max_K << "] from " << valid_combinations.size() << " unique combinations" << std::endl;
+      std::cout << "Labels written to: " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
+      std::cout << "Vectors written to: " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
+
+      // 输出统计信息
+      if (!valid_combinations.empty())
+      {
+         std::vector<int> counts;
+         for (const auto &item : valid_combinations)
+            counts.push_back(item.count);
+         std::sort(counts.begin(), counts.end());
+
+         std::cout << "\nStatistics of generated queries:" << std::endl;
+         std::cout << "Min count: " << counts.front() << std::endl;
+         std::cout << "Max count: " << counts.back() << std::endl;
+         std::cout << "Median count: " << counts[counts.size() / 2] << std::endl;
       }
    }
 

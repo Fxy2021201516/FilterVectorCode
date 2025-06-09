@@ -59,6 +59,14 @@ while [[ $# -gt 0 ]]; do
             NUM_REPEATS="$2"
             shift 2
             ;;
+         --generate_query)
+            GENERATE_QUERY="$2"
+            shift 2
+            ;;
+         --generate_query_task)
+            GENERATE_QUERY_TASK="$2"
+            shift 2
+            ;;
         *)
             echo "未知参数: $1"
             exit 1
@@ -94,10 +102,12 @@ mkdir -p "$RESULT_DIR"
     --data_type float --dist_fn L2 --num_threads "$NUM_THREADS" --max_degree "$MAX_DEGREE" --Lbuild "$LBUILD" --alpha "$ALPHA" --num_cross_edges "$NUM_CROSS_EDGES"\
     --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
     --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
+    --base_label_info_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels_info.log" \
     --index_path_prefix "$OUTPUT_DIR/index_files/" \
     --result_path_prefix "$RESULT_DIR/" \
     --scenario general \
-    --generate_query true --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
+    --generate_query "$GENERATE_QUERY"  --generate_query_task "$GENERATE_QUERY_TASK"\
+    --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
     --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
 
 # Step6:转换查询数据格式

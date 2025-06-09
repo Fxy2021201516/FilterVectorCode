@@ -62,14 +62,30 @@ namespace ANNS
                                      float keep_prob,
                                      bool stratified_sampling,
                                      bool verify);
-      void generatePowerSetToFile(std::string &output_prefix, std::string dataset, int m, int query_n);
-      void generateLowCoverageQueriesToFile(
+      void generate_queries_method1_high_coverage(std::string &output_prefix, std::string dataset, int m, int query_n);
+      void generate_queries_method1_low_coverage(
           std::string &output_prefix,
           std::string dataset,
           int query_n,
           std::string &base_label_file,
           int num_of_per_query_labels,
-          float coverage_threshold);
+          float coverage_threshold,
+          int K);
+      void generate_queries_method2_high_coverage(
+          std::string &output_prefix,
+          std::string dataset,
+          int query_n,
+          std::string &base_label_file,
+          std::string &base_label_info_file);
+      void generate_queries_method2_low_coverage(
+          std::string &output_prefix,
+          std::string dataset,
+          int query_n,
+          std::string &base_label_file,
+          int num_of_per_query_labels,
+          int K,
+          int max_K,
+          int min_K);
       void load_bipartite_graph(const std::string &filename);
       bool compare_graphs(const ANNS::UniNavGraph &g1, const ANNS::UniNavGraph &g2);
       IdxType _num_points;

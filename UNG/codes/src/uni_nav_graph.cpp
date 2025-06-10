@@ -20,12 +20,16 @@
 #include <boost/filesystem.hpp>
 #include <filesystem>
 #include <bitset>
+#include <boost/dynamic_bitset.hpp>
 
 #include "utils.h"
 #include "vamana/vamana.h"
 #include "include/uni_nav_graph.h"
+#include <roaring/roaring.h>
+#include <roaring/roaring.hh>
 
 namespace fs = boost::filesystem;
+using BitsetType = boost::dynamic_bitset<>;
 
 // 文件格式常量
 const std::string FVEC_EXT = ".fvecs";
@@ -88,6 +92,9 @@ namespace ANNS
 
          // calculate the coverage ratio
          cal_f_coverage_ratio(); // fxy_add
+
+         // initialize_lng_descendants_coverage_bitsets();
+         initialize_roaring_bitsets();
 
          // build cross-group edges
          build_cross_group_edges();
@@ -1014,6 +1021,65 @@ namespace ANNS
    //       std::cout << "- LNG structure saved to lng_structure.txt" << std::endl;
    //    }
 
+   // fxy_add:初始化求flag的几个数据结构
+   void UniNavGraph::initialize_lng_descendants_coverage_bitsets()
+   {
+      std::cout << "Initializing LNG descendants and coverage bitsets..." << std::endl;
+      auto start_time = std::chrono::high_resolution_clock::now();
+
+      _lng_descendants_bits.resize(_num_groups + 1);
+      _covered_sets_bits.resize(_num_groups + 1);
+
+      for (IdxType group_id = 1; group_id <= _num_groups; ++group_id)
+      {
+         // 初始化大小
+         _lng_descendants_bits[group_id].resize(_num_groups);
+         _covered_sets_bits[group_id].resize(_num_points);
+
+         // 填充后代的group的集合
+         const auto &descendants = _label_nav_graph->_lng_descendants[group_id];
+         for (auto id : descendants)
+         {
+            _lng_descendants_bits[group_id].set(id);
+         }
+
+         // 填充覆盖的向量的集合
+         const auto &coverage = _label_nav_graph->covered_sets[group_id];
+         for (auto id : coverage)
+         {
+            _covered_sets_bits[group_id].set(id);
+         }
+      }
+   }
+
+   // fxy_add:初始化求flag的几个数据结构
+
+   void UniNavGraph::initialize_roaring_bitsets()
+   {
+      _lng_descendants_rb.resize(_num_groups + 1);
+      _covered_sets_rb.resize(_num_groups + 1);
+
+      for (IdxType group_id = 1; group_id <= _num_groups; ++group_id)
+      {
+         const auto &descendants = _label_nav_graph->_lng_descendants[group_id];
+         const auto &coverage = _label_nav_graph->covered_sets[group_id];
+
+         // 初始化后代 bitset
+         for (auto id : descendants)
+         {
+            _lng_descendants_rb[group_id].add(id);
+         }
+
+         // 初始化覆盖 bitset
+         for (auto id : coverage)
+         {
+            _covered_sets_rb[group_id].add(id);
+         }
+      }
+
+      std::cout << "Roaring bitsets initialized." << std::endl;
+   }
+
    // 将分组内的局部索引转换为全局索引
    void UniNavGraph::add_offset_for_uni_nav_graph()
    {
@@ -1290,41 +1356,47 @@ namespace ANNS
             std::cout << query_labels[i] << " ";
          }
 
-         // 1. 计算入口组信息
+         // 计算入口组信息
          std::vector<IdxType> entry_group_ids;
          get_min_super_sets(query_labels, entry_group_ids, true, true);
          stats.num_entry_points = entry_group_ids.size();
 
          auto flag_start_time = std::chrono::high_resolution_clock::now();
 
-         // 2. 读取LNG后代数量
-         std::unordered_set<IdxType> all_descendants; // unordered_set可以避免重复
+         // BitsetType combined_descendants(_num_points);
+         // BitsetType combined_coverage(_num_points);
+         // auto merge_start = std::chrono::high_resolution_clock::now();
+         // for (auto group_id : entry_group_ids)
+         // {
+         //    combined_descendants |= _lng_descendants_bits[group_id];
+         //    combined_coverage |= _covered_sets_bits[group_id];
+         // }
+         // auto merge_end = std::chrono::high_resolution_clock::now();
+         // stats.num_lng_descendants = combined_descendants.count();
+         // float total_unique_coverage = static_cast<float>(combined_coverage.count()) / _num_points;
+         roaring::Roaring combined_descendants;
+         roaring::Roaring combined_coverage;
+         auto merge_start = std::chrono::high_resolution_clock::now();
          for (auto group_id : entry_group_ids)
          {
-            if (group_id <= 0 || group_id > _label_nav_graph->_lng_descendants.size())
+            if (group_id > 0 && group_id <= _num_groups)
             {
-               std::cerr << "Error: Invalid group ID " << group_id << std::endl;
-               continue;
+               combined_descendants |= _lng_descendants_rb[group_id];
+               combined_coverage |= _covered_sets_rb[group_id];
             }
-
-            const auto &descendants = _label_nav_graph->_lng_descendants[group_id];
-            all_descendants.insert(descendants.begin(), descendants.end());
          }
-         stats.num_lng_descendants = all_descendants.size();
+         auto merge_end = std::chrono::high_resolution_clock::now();
+         stats.num_lng_descendants = combined_descendants.cardinality();
+         float total_unique_coverage = static_cast<float>(combined_coverage.cardinality()) / _num_points;
+         auto count_end = std::chrono::high_resolution_clock::now();
+         std::cout << "Merge time: " << std::chrono::duration<double, std::milli>(merge_end - merge_start).count() << " ms\n";
+         std::cout << "Count time: " << std::chrono::duration<double, std::milli>(count_end - merge_end).count() << " ms\n";
 
-         // 3. 计算覆盖率决定搜索策略
-         std::unordered_set<IdxType> merged_set;
-         for (auto group_id : entry_group_ids)
-         {
-            merged_set.insert(
-                _label_nav_graph->covered_sets[group_id].begin(),
-                _label_nav_graph->covered_sets[group_id].end());
-         }
-         float total_unique_coverage = static_cast<float>(merged_set.size()) / _num_points;
          stats.entry_group_total_coverage = total_unique_coverage;
 
          bool use_global_search = (total_unique_coverage > COVERAGE_THRESHOLD) ||
-                                  (all_descendants.size() > MIN_LNG_DESCENDANTS_THRESHOLD);
+                                  (combined_descendants.cardinality() > MIN_LNG_DESCENDANTS_THRESHOLD);
+
          stats.flag_time_ms = std::chrono::duration<double, std::milli>(
                                   std::chrono::high_resolution_clock::now() - flag_start_time)
                                   .count();
@@ -1727,6 +1799,18 @@ namespace ANNS
       std::string vector_attr_graph_filename = index_path_prefix + "vector_attr_graph";
       save_bipartite_graph(vector_attr_graph_filename);
 
+      // // save _lng_descendants_bits and _covered_sets_bits
+      // std::string lng_descendants_bits_filename = index_path_prefix + "lng_descendants_bits";
+      // write_bitset_vector(lng_descendants_bits_filename, _lng_descendants_bits);
+      // std::string covered_sets_bits_filename = index_path_prefix + "covered_sets_bits";
+      // write_bitset_vector(covered_sets_bits_filename, _covered_sets_bits);
+
+      // save lng_descendants_rb and _covered_sets_rb
+      std::string lng_descendants_rb_filename = index_path_prefix + "lng_descendants_rb.bin";
+      save_roaring_vector(lng_descendants_rb_filename, _lng_descendants_rb);
+      std::string covered_sets_rb_filename = index_path_prefix + "covered_sets_rb.bin";
+      save_roaring_vector(covered_sets_rb_filename, _covered_sets_rb);
+
       // print
       std::cout << "- Index saved in " << std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start_time).count() << " ms" << std::endl;
    }
@@ -1800,6 +1884,22 @@ namespace ANNS
       std::string covered_sets_filename = index_path_prefix + "covered_sets";
       load_2d_vectors(covered_sets_filename, _label_nav_graph->covered_sets);
       std::cout << "LNG covered_sets loaded." << std::endl;
+
+      // // fxy_add: load  _lng_descendants_bits and _covered_sets_bits
+      // std::string lng_descendants_bits_filename = index_path_prefix + "lng_descendants_bits";
+      // load_bitset_vector(lng_descendants_bits_filename, _lng_descendants_bits);
+      // std::cout << "_lng_descendants_bits loaded." << std::endl;
+      // std::string covered_sets_bits_filename = index_path_prefix + "covered_sets_bits";
+      // load_bitset_vector(covered_sets_bits_filename, _covered_sets_bits);
+      // std::cout << "_covered_sets_bits loaded." << std::endl;
+
+      // fxy_add: load lng_descendants_rb and _covered_sets_rb
+      std::string lng_descendants_rb_filename = index_path_prefix + "lng_descendants_rb.bin";
+      load_roaring_vector(lng_descendants_rb_filename, _lng_descendants_rb);
+      std::cout << "_lng_descendants_rb loaded." << std::endl;
+      std::string covered_sets_rb_filename = index_path_prefix + "covered_sets_rb.bin";
+      load_roaring_vector(covered_sets_rb_filename, _covered_sets_rb);
+      std::cout << "_covered_sets_rb loaded." << std::endl;
 
       // print
       std::cout << "- Index loaded in " << std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start_time).count() << " ms" << std::endl;

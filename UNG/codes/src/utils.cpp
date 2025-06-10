@@ -190,4 +190,65 @@ namespace ANNS
       return 100.0 * total_correct / (num_queries * K); // 返回整体召回率
    }
 
+   // fxy_add
+   void save_roaring_vector(const std::string &filename, const std::vector<roaring::Roaring> &rb_vec)
+   {
+      std::ofstream out(filename, std::ios::binary);
+
+      // 写入 vector 大小
+      uint64_t size = rb_vec.size();
+      out.write(reinterpret_cast<const char *>(&size), sizeof(size));
+
+      for (const auto &rb : rb_vec)
+      {
+         // 获取序列化大小
+         size_t serialized_size = rb.getSizeInBytes();
+         char *buffer = new char[serialized_size];
+         rb.write(buffer); // 写入 buffer
+
+         // 写入大小 + 数据
+         out.write(reinterpret_cast<const char *>(&serialized_size), sizeof(serialized_size));
+         out.write(buffer, serialized_size);
+
+         delete[] buffer;
+      }
+
+      out.close();
+      std::cout << "Saved roaring vector to " << filename << ", size = " << rb_vec.size() << std::endl;
+   }
+
+   void load_roaring_vector(const std::string &filename, std::vector<roaring::Roaring> &rb_vec)
+   {
+      std::ifstream in(filename, std::ios::binary);
+      if (!in)
+      {
+         std::cerr << "Error: Could not open file for reading: " << filename << std::endl;
+         return;
+      }
+
+      // 读取 vector 大小
+      uint64_t size;
+      in.read(reinterpret_cast<char *>(&size), sizeof(size));
+      rb_vec.resize(size);
+
+      for (size_t i = 0; i < size; ++i)
+      {
+         // 读取每个 roaring bitmap 的大小
+         size_t serialized_size;
+         in.read(reinterpret_cast<char *>(&serialized_size), sizeof(serialized_size));
+
+         // 分配缓冲区并读取数据
+         char *buffer = new char[serialized_size];
+         in.read(buffer, serialized_size);
+
+         // 构造 roaring bitmap
+         rb_vec[i] = roaring::Roaring::readSafe(buffer, serialized_size);
+
+         delete[] buffer;
+      }
+
+      in.close();
+      std::cout << "Loaded roaring vector from " << filename << ", size = " << rb_vec.size() << std::endl;
+   }
+
 }

@@ -9,6 +9,11 @@
 #include "vamana/vamana.h"
 #include <unordered_map>
 #include <bitset>
+#include <boost/dynamic_bitset.hpp>
+#include <roaring/roaring.h>
+#include <roaring/roaring.hh>
+
+using BitsetType = boost::dynamic_bitset<>;
 
 namespace ANNS
 {
@@ -96,6 +101,12 @@ namespace ANNS
 
       std::pair<std::bitset<10000001>, double> compute_attribute_bitmap(const std::vector<LabelType> &query_attributes) const; // 构建bitmap
 
+      // 求search中flag需要的数据结构
+      std::vector<BitsetType> _lng_descendants_bits; // 每个 group 的后代集合
+      std::vector<BitsetType> _covered_sets_bits;    // 每个 group 的覆盖集合
+      std::vector<roaring::Roaring> _lng_descendants_rb;
+      std::vector<roaring::Roaring> _covered_sets_rb;
+
    private:
       // data
       std::shared_ptr<IStorage> _base_storage,
@@ -152,6 +163,10 @@ namespace ANNS
       void save_bipartite_graph(const std::string &filename);
       uint32_t compute_checksum() const;
       // void load_bipartite_graph(const std::string &filename);
+
+      // 处理flag的相关函数
+      void initialize_lng_descendants_coverage_bitsets();
+      void initialize_roaring_bitsets();
 
       // index parameters for each graph
       IdxType _max_degree,

@@ -1,6 +1,6 @@
-# cd UNG
-# ./exp_ung.sh
+cd UNG
+./exp_ung.sh
 
-# cd ..
+cd ..
 cd ACORN
 ./exp_acorn.sh

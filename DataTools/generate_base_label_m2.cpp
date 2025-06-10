@@ -590,8 +590,8 @@ int main()
       segment_rules = {
           make_tuple(1, 3, 2.0),
           make_tuple(3, 7, 1.3),
-          make_tuple(8, 30000, 1.03)};
-      max_depth = 30000;
+          make_tuple(8, 20000, 1.03)};
+      max_depth = 20000;
       total_vectors = 1365874;
    }
 

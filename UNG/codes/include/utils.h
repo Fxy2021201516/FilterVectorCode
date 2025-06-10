@@ -9,6 +9,8 @@
 #include <iostream>
 #include "config.h"
 #include <unordered_set>
+#include <roaring/roaring.h>
+#include <roaring/roaring.hh>
 
 #define SEP_LINE "------------------------------------------------------------\n"
 
@@ -181,6 +183,52 @@ namespace ANNS
          vecs.push_back(set);
       }
    }
+
+   // 将 boost::dynamic_bitset 的 vector 写入文件
+   template <typename BitsetType>
+   void write_bitset_vector(const std::string &filename, const std::vector<BitsetType> &bitset_vec)
+   {
+      std::ofstream out(filename);
+      if (!out.is_open())
+      {
+         std::cerr << "Error: Could not open file for writing: " << filename << std::endl;
+         return;
+      }
+
+      for (const auto &bs : bitset_vec)
+      {
+         out << bs << "\n"; // 使用 operator<< 输出
+      }
+
+      out.close();
+      std::cout << "Saved bitset vector to " << filename << ", size = " << bitset_vec.size() << std::endl;
+   }
+
+   // 从文件中加载 boost::dynamic_bitset 的 vector
+   template <typename BitsetType>
+   void load_bitset_vector(const std::string &filename, std::vector<BitsetType> &bitset_vec)
+   {
+      std::ifstream in(filename);
+      if (!in.is_open())
+      {
+         std::cerr << "Error: Could not open file for reading: " << filename << std::endl;
+         return;
+      }
+
+      bitset_vec.clear();
+      std::string line;
+      while (std::getline(in, line))
+      {
+         if (line.empty())
+            continue;
+         bitset_vec.emplace_back(line); // 从字符串构造 dynamic_bitset
+      }
+
+      in.close();
+      std::cout << "Loaded bitset vector from " << filename << ", size = " << bitset_vec.size() << std::endl;
+   }
+   void save_roaring_vector(const std::string &filename, const std::vector<roaring::Roaring> &rb_vec);
+   void load_roaring_vector(const std::string &filename, std::vector<roaring::Roaring> &rb_vec);
 }
 
 #endif // UTILS_H

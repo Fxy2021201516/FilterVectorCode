@@ -35,6 +35,21 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -DNDEBUG -Ofast -marc
 # include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_SOURCE_DIR}/third_party/CRoaring/include)
+
+# Find pre-built CRoaring library
+set(ROARING_LIB_DIR "${PROJECT_SOURCE_DIR}/third_party/CRoaring/build/src")
+find_library(ROARING_LIB
+    NAMES roaring libroaring
+    PATHS ${ROARING_LIB_DIR}
+    PATH_SUFFIXES lib lib64
+    NO_DEFAULT_PATH
+)
+if(NOT ROARING_LIB)
+    message(FATAL_ERROR "CRoaring library not found. Searched in ${ROARING_LIB_DIR} and subdirectories. Please check the build or path.")
+else()
+    message(STATUS "CRoaring library found at: ${ROARING_LIB}")
+endif()
 
 # add subdirectories
 add_subdirectory(vamana)

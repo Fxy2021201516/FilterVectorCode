@@ -83,8 +83,9 @@ fi
 # Step3:创建构建目录并编译代码
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR" || exit
-cmake -DCMAKE_BUILD_TYPE=Release ../codes/
+cmake -DCMAKE_BUILD_TYPE=Release  ../codes/
 make -j
+# make VERBOSE=1 -j
 cd .. || exit
 
 OUTPUT_DIR="${OUTPUT_DIR}/${DATASET}_dataset_${DATASET}_query${NUM_QUERY_SETS}_M${MAX_DEGREE}_LB${LBUILD}_alpha${ALPHA}_C${NUM_CROSS_EDGES}_EP${NUM_ENTRY_POINTS}_REPEATs${NUM_REPEATS}"

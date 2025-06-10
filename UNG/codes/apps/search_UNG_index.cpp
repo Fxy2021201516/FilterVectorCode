@@ -7,6 +7,8 @@
 #include <boost/program_options.hpp>
 #include "uni_nav_graph.h"
 #include "utils.h"
+#include <roaring/roaring.h>
+#include <roaring/roaring.hh>
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -180,7 +182,7 @@ int main(int argc, char **argv)
                        << query_stats[repeat][LsearchId][i].time_ms << ","
                        << query_stats[repeat][LsearchId][i].flag_time_ms << ","
                        << bitmap_and_time[i].second << ","
-                       << query_stats[repeat][LsearchId][i].time_ms - query_stats[repeat][LsearchId][i].flag_time_ms + bitmap_and_time[i].second << ","
+                       << query_stats[repeat][LsearchId][i].time_ms - query_stats[repeat][LsearchId][i].flag_time_ms << ","
                        << query_stats[repeat][LsearchId][i].num_distance_calcs << ","
                        << query_stats[repeat][LsearchId][i].num_entry_points << ","
                        << query_stats[repeat][LsearchId][i].num_lng_descendants << ","

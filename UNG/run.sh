@@ -89,55 +89,55 @@ make -j
 cd .. || exit
 
 OUTPUT_DIR="${OUTPUT_DIR}/${DATASET}_dataset_${DATASET}_query${NUM_QUERY_SETS}_M${MAX_DEGREE}_LB${LBUILD}_alpha${ALPHA}_C${NUM_CROSS_EDGES}_EP${NUM_ENTRY_POINTS}_REPEATs${NUM_REPEATS}"
-mkdir -p "$OUTPUT_DIR"
+# mkdir -p "$OUTPUT_DIR"
 OTHER_DIR="$OUTPUT_DIR/others"
-mkdir -p "$OTHER_DIR"
+# mkdir -p "$OTHER_DIR"
 RESULT_DIR="$OUTPUT_DIR/results"
-mkdir -p "$RESULT_DIR"
+# mkdir -p "$RESULT_DIR"
 
-# Step4:转换基础数据格式
-./"$BUILD_DIR"/tools/fvecs_to_bin --data_type float --input_file "$DATA_DIR/${DATASET}_base.fvecs" --output_file "$DATA_DIR/${DATASET}_base.bin"
+# # Step4:转换基础数据格式
+# ./"$BUILD_DIR"/tools/fvecs_to_bin --data_type float --input_file "$DATA_DIR/${DATASET}_base.fvecs" --output_file "$DATA_DIR/${DATASET}_base.bin"
 
-# Step5:构建index + 生成查询任务文件
-./"$BUILD_DIR"/apps/build_UNG_index \
-    --data_type float --dist_fn L2 --num_threads "$NUM_THREADS" --max_degree "$MAX_DEGREE" --Lbuild "$LBUILD" --alpha "$ALPHA" --num_cross_edges "$NUM_CROSS_EDGES"\
-    --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
-    --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
-    --base_label_info_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels_info.log" \
-    --index_path_prefix "$OUTPUT_DIR/index_files/" \
-    --result_path_prefix "$RESULT_DIR/" \
-    --scenario general \
-    --generate_query "$GENERATE_QUERY"  --generate_query_task "$GENERATE_QUERY_TASK"\
-    --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
-    --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
+# # Step5:构建index + 生成查询任务文件
+# ./"$BUILD_DIR"/apps/build_UNG_index \
+#     --data_type float --dist_fn L2 --num_threads "$NUM_THREADS" --max_degree "$MAX_DEGREE" --Lbuild "$LBUILD" --alpha "$ALPHA" --num_cross_edges "$NUM_CROSS_EDGES"\
+#     --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
+#     --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
+#     --base_label_info_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels_info.log" \
+#     --index_path_prefix "$OUTPUT_DIR/index_files/" \
+#     --result_path_prefix "$RESULT_DIR/" \
+#     --scenario general \
+#     --generate_query "$GENERATE_QUERY"  --generate_query_task "$GENERATE_QUERY_TASK"\
+#     --query_file_path "$DATA_DIR/query_${NUM_QUERY_SETS}" \
+#     --dataset "$DATASET" > "$OTHER_DIR/${DATASET}_build_index_output.txt" 2>&1
 
-# Step6:转换查询数据格式
-for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))
-do
-    INPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.fvecs"
-    OUTPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin"
+# # Step6:转换查询数据格式
+# for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))
+# do
+#     INPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.fvecs"
+#     OUTPUT_FILE="$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin"
     
-    echo "Processing set $i: $INPUT_FILE -> $OUTPUT_FILE"
-    ./"$BUILD_DIR"/tools/fvecs_to_bin --data_type float --input_file "$INPUT_FILE" --output_file "$OUTPUT_FILE"
-done
+#     echo "Processing set $i: $INPUT_FILE -> $OUTPUT_FILE"
+#     ./"$BUILD_DIR"/tools/fvecs_to_bin --data_type float --input_file "$INPUT_FILE" --output_file "$OUTPUT_FILE"
+# done
 
-# Step7:生成gt
-for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))
-do
-    ./"$BUILD_DIR"/tools/compute_groundtruth \
-        --data_type float --dist_fn L2 --scenario containment --K "$K" --num_threads "$NUM_THREADS" \
-        --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
-        --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
-        --query_bin_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin" \
-        --query_label_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query_labels.txt" \
-        --gt_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_gt_labels_containment.bin"
+# # Step7:生成gt
+# for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))
+# do
+#     ./"$BUILD_DIR"/tools/compute_groundtruth \
+#         --data_type float --dist_fn L2 --scenario containment --K "$K" --num_threads "$NUM_THREADS" \
+#         --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
+#         --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
+#         --query_bin_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query.bin" \
+#         --query_label_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_query_labels.txt" \
+#         --gt_file "$DATA_DIR/query_${NUM_QUERY_SETS}/${DATASET}_gt_labels_containment.bin"
     
-    if [ $? -ne 0 ]; then
-        echo "Error generating GT for set $i"
-        exit 1
-    fi
-done
-echo -e "All ground truth files generated successfully!"
+#     if [ $? -ne 0 ]; then
+#         echo "Error generating GT for set $i"
+#         exit 1
+#     fi
+# done
+# echo -e "All ground truth files generated successfully!"
 
 # Step8:执行搜索
 for ((i=NUM_QUERY_SETS; i<=NUM_QUERY_SETS; i++))

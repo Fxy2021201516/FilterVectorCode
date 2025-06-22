@@ -22,6 +22,8 @@ namespace ANNS
       float recall;
       double time_ms;
       double flag_time_ms;
+      double descendants_merge_time_ms; // descendants合并耗时
+      double coverage_merge_time_ms;    // coverage合并耗时
       double entry_group_total_coverage;
       size_t num_distance_calcs;
       size_t num_entry_points;

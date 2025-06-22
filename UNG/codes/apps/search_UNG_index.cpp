@@ -168,7 +168,7 @@ int main(int argc, char **argv)
 
    // 输出详细文件
    std::ofstream detail_out(result_path_prefix + "query_details_repeat" + std::to_string(num_repeats) + ".csv");
-   detail_out << "repeat,Lsearch,QueryID,Time(ms),flag_time(ms),bitmap_time(ms),UNG_time(ms),DistanceCalcs,EntryPoints,LNGDescendants,entry_group_total_coverage,QPS,Recall,is_global_search\n";
+   detail_out << "repeat,Lsearch,QueryID,Time(ms),descendants_merge_time(ms),coverage_merge_time(ms),flag_time(ms),bitmap_time(ms),UNG_time(ms),DistanceCalcs,EntryPoints,LNGDescendants,entry_group_total_coverage,QPS,Recall,is_global_search\n";
 
    for (int repeat = 0; repeat < num_repeats; repeat++)
    {
@@ -180,6 +180,8 @@ int main(int argc, char **argv)
                        << Lsearch_list[LsearchId] << ","
                        << i << ","
                        << query_stats[repeat][LsearchId][i].time_ms << ","
+                       << query_stats[repeat][LsearchId][i].descendants_merge_time_ms << ","
+                       << query_stats[repeat][LsearchId][i].coverage_merge_time_ms << ","
                        << query_stats[repeat][LsearchId][i].flag_time_ms << ","
                        << bitmap_and_time[i].second << ","
                        << query_stats[repeat][LsearchId][i].time_ms - query_stats[repeat][LsearchId][i].flag_time_ms << ","

@@ -78,6 +78,13 @@ def process_ung_data(ung_file):
         entry_points = group['EntryPoints'].iloc[0]
         coverage = group['entry_group_total_coverage'].iloc[0]
         filter_map_time = group['bitmap_time(ms)'].iloc[0]
+        flag_time = group['flag_time(ms)'].iloc[0]
+        
+        # 新增的指标
+        descendants_merge_time = group['descendants_merge_time(ms)'].iloc[0]
+        coverage_merge_time = group['coverage_merge_time(ms)'].iloc[0]
+        lng_descendants = group['LNGDescendants'].iloc[0]
+
 
         results[query_id] = {
             'UNG_time': ung_time_n3_Recall['UNG_time(ms)'],
@@ -85,7 +92,12 @@ def process_ung_data(ung_file):
             'UNG_Recall': ung_time_n3_Recall['Recall'],
             'EntryPoints': entry_points,
             'Coverage': coverage,
-            'bitmap_time': filter_map_time
+            'bitmap_time': filter_map_time,
+            'flag_time': flag_time,
+            # 添加新的指标
+            'descendants_merge_time': descendants_merge_time,
+            'coverage_merge_time': coverage_merge_time,
+            'LNGDescendants': lng_descendants
         }
 
     return pd.DataFrame(results).T.reset_index(names='QueryID')
@@ -94,8 +106,7 @@ def process_ung_data(ung_file):
 def merge_datasets(acorn_df, ung_df):
     merged_df = pd.merge(acorn_df, ung_df, on='QueryID', how='outer')
 
-    # UNG 时间减去 bitmap_time，ACORN 加上 bitmap_time
-    merged_df['UNG_time'] -= merged_df['bitmap_time']
+    # ACORN 加上 bitmap_time
     merged_df['acorn_Time'] += merged_df['bitmap_time']
     merged_df['ACORN_1_Time'] += merged_df['bitmap_time']
 

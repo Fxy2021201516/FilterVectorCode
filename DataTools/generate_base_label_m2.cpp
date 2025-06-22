@@ -471,11 +471,11 @@ public:
 
       vector<string> stats;
       stats.push_back("=== LNG树统计信息 ===");
-      stats.push_back("总深度: " + to_string(max_depth));
-      stats.push_back("总组数: " + to_string(accumulate(layer_group_counts.begin(), layer_group_counts.end(), 0)));
+      stats.push_back("总层数: " + to_string(max_depth));
+      stats.push_back("总group数: " + to_string(accumulate(layer_group_counts.begin(), layer_group_counts.end(), 0)));
       stats.push_back("总向量数: " + to_string(total_vectors));
       stats.push_back("\n层级分布:");
-      stats.push_back("层号\t组数\t向量数\t平均向量/组");
+      stats.push_back("层号\tgroup数\t向量数\t平均向量/group");
 
       for (int depth = 1; depth <= max_depth; ++depth)
       {
@@ -590,8 +590,8 @@ int main()
       segment_rules = {
           make_tuple(1, 3, 2.0),
           make_tuple(3, 7, 1.3),
-          make_tuple(8, 20000, 1.03)};
-      max_depth = 20000;
+          make_tuple(8, 10000, 1.03)};
+      max_depth = 10000;
       total_vectors = 1365874;
    }
 

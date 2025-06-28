@@ -1361,47 +1361,51 @@ namespace ANNS
          get_min_super_sets(query_labels, entry_group_ids, true, true);
          stats.num_entry_points = entry_group_ids.size();
 
+         // 使用局部作用域限制变量生命周期
          auto flag_start_time = std::chrono::high_resolution_clock::now();
 
-         roaring::Roaring combined_descendants;
-         roaring::Roaring combined_coverage;
-
-         // 单独计时 descendants 合并
-         auto desc_start = std::chrono::high_resolution_clock::now();
-         for (auto group_id : entry_group_ids)
+         // 1. 处理 descendants
+         stats.num_lng_descendants = [&]()
          {
-            if (group_id > 0 && group_id <= _num_groups)
+            roaring::Roaring combined_descendants;
+            auto desc_start = std::chrono::high_resolution_clock::now();
+            for (auto group_id : entry_group_ids)
             {
-               combined_descendants |= _lng_descendants_rb[group_id];
+               if (group_id > 0 && group_id <= _num_groups)
+               {
+                  combined_descendants |= _lng_descendants_rb[group_id];
+               }
             }
-         }
-         auto desc_end = std::chrono::high_resolution_clock::now();
-         stats.descendants_merge_time_ms = std::chrono::duration<double, std::milli>(desc_end - desc_start).count();
+            auto desc_end = std::chrono::high_resolution_clock::now();
+            stats.descendants_merge_time_ms = std::chrono::duration<double, std::milli>(desc_end - desc_start).count();
+            return combined_descendants.cardinality();
+         }();
 
-         // 单独计时 coverage 合并
-         auto cov_start = std::chrono::high_resolution_clock::now();
-         for (auto group_id : entry_group_ids)
+         // 2. 处理 coverage
+         float total_unique_coverage = [&]()
          {
-            if (group_id > 0 && group_id <= _num_groups)
+            roaring::Roaring combined_coverage;
+            auto cov_start = std::chrono::high_resolution_clock::now();
+            for (auto group_id : entry_group_ids)
             {
-               combined_coverage |= _covered_sets_rb[group_id];
+               if (group_id > 0 && group_id <= _num_groups)
+               {
+                  combined_coverage |= _covered_sets_rb[group_id];
+               }
             }
-         }
-         auto cov_end = std::chrono::high_resolution_clock::now();
-         stats.coverage_merge_time_ms = std::chrono::duration<double, std::milli>(cov_end - cov_start).count();
+            auto cov_end = std::chrono::high_resolution_clock::now();
+            stats.coverage_merge_time_ms = std::chrono::duration<double, std::milli>(cov_end - cov_start).count();
+            return static_cast<float>(combined_coverage.cardinality()) / _num_points;
+         }();
 
-         // 计算统计值
-         stats.num_lng_descendants = combined_descendants.cardinality();
-         float total_unique_coverage = static_cast<float>(combined_coverage.cardinality()) / _num_points;
          stats.entry_group_total_coverage = total_unique_coverage;
-
          bool use_global_search = (total_unique_coverage > COVERAGE_THRESHOLD) ||
-                                  (combined_descendants.cardinality() > MIN_LNG_DESCENDANTS_THRESHOLD);
+                                  (stats.num_lng_descendants > MIN_LNG_DESCENDANTS_THRESHOLD);
 
-         // 总时间保持不变
          stats.flag_time_ms = std::chrono::duration<double, std::milli>(
                                   std::chrono::high_resolution_clock::now() - flag_start_time)
                                   .count();
+
          if (is_ori_ung)
             use_global_search = false;
          stats.is_global_search = use_global_search;

@@ -24,6 +24,7 @@ int main(int argc, char **argv)
    std::string generate_query_task;
    std::string query_file_path;
    std::string dataset;
+   float method1_high_coverage_p = 0.0f;
 
    try
    {
@@ -71,6 +72,8 @@ int main(int argc, char **argv)
                          "Query label file");
       desc.add_options()("dataset", po::value<std::string>(&dataset)->required(),
                          "dataset");
+      desc.add_options()("method1_high_coverage_p", po::value<float>(&method1_high_coverage_p)->required(),
+                         "method1_high_coverage_p");
 
       po::variables_map vm;
       po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -124,9 +127,9 @@ int main(int argc, char **argv)
       // index.generate_multiple_queries(dataset, index, query_file_path, 1, 1, 0.5f, false, true); //根据LNG的group生成查询任务
       if (generate_query_task == "method1_high_coverage") // 极端数据方法1-高覆盖率
       {
-         index.generate_queries_method1_high_coverage(query_file_path, dataset, 3, 1000);
+         index.generate_queries_method1_high_coverage(query_file_path, dataset, 1000, base_label_file, method1_high_coverage_p);
       }
-      else if (generate_query_task == "method1_low_coverage") // 极端数据方法1-低覆盖率
+      else if (generate_query_task == "method1_low_coverage") // 极端数据方法1-低覆盖率:选出覆盖率在 (0, coverage_threshold=0.1] 区间且出现次数 ≥ K=10 的组合
       {
          index.generate_queries_method1_low_coverage(query_file_path, dataset, 1000, base_label_file, 7, 0.1f, 10);
       }

@@ -63,7 +63,7 @@ def process_acorn_data(acorn_file):
             'ACORN_1_n3': acorn1_time_n3_Recall['ACORN_1_n3'],
             'ACORN_1_Recall': acorn1_time_n3_Recall['ACORN_1_Recall']
         }
-    return pd.DataFrame(results).T.reset_index(names='QueryID')
+    return pd.DataFrame(results).T.reset_index().rename(columns={'index': 'QueryID'})
 
 
 def process_ung_data(ung_file):
@@ -100,7 +100,7 @@ def process_ung_data(ung_file):
             'LNGDescendants': lng_descendants
         }
 
-    return pd.DataFrame(results).T.reset_index(names='QueryID')
+    return pd.DataFrame(results).T.reset_index().rename(columns={'index': 'QueryID'})
 
 
 def merge_datasets(acorn_df, ung_df):
@@ -192,7 +192,7 @@ def find_matching_file_pairs(base_dir):
 
 
 def main():
-    base_dir = "/data/fxy/FilterVectorResults"
+    base_dir = "/home/sunyahui/fxy/FilterVectorResults"
     output_dir = os.path.join(base_dir, "merge_results")
     os.makedirs(output_dir, exist_ok=True)
     

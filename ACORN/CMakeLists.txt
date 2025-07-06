@@ -74,7 +74,7 @@ endif()
 # FetchContent_GetProperties(nlohmann_json)
 include(FetchContent)
 FetchContent_Declare(nlohmann_json
-    URL "file:///home/fengxiaoyao/ACORN_data/json-3.10.4.tar.gz"
+    URL "file:///home/sunyahui/fxy/FilterVectorCode/thirdparty/json-3.10.4.tar.gz"
 )
 FetchContent_MakeAvailable(nlohmann_json)
 if(NOT nlohmann_json_POPULATED)
@@ -83,6 +83,9 @@ if(NOT nlohmann_json_POPULATED)
 endif()
 
 target_include_directories(faiss PRIVATE ${nlohmann_json_SOURCE_DIR}/include)
+target_link_libraries(test_acorn PRIVATE nlohmann_json::nlohmann_json)
+
+
 
 find_package(ZLIB REQUIRED)
 target_link_libraries(faiss PUBLIC ${ZLIB_LIBRARIES})

@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
       if (dataset != "sift1M" && dataset != "sift1M_test" &&
           dataset != "sift1B" && dataset != "tripclick" &&
           dataset != "paper" && dataset != "paper_rand2m" &&
-          dataset != "words" && dataset != "MTG" && dataset != "arxiv" && dataset != "captcha") // TODO
+          dataset != "words" && dataset != "MTG" && dataset != "arxiv" && dataset != "captcha" && dataset != "TimeTravel" && dataset != "russian" && dataset != "bookimg") // TODO
       {
          printf("got dataset: %s\n", dataset.c_str());
          fprintf(stderr,

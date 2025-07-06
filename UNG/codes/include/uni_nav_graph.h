@@ -69,7 +69,7 @@ namespace ANNS
                                      float keep_prob,
                                      bool stratified_sampling,
                                      bool verify);
-      void generate_queries_method1_high_coverage(std::string &output_prefix, std::string dataset, int m, int query_n);
+      void generate_queries_method1_high_coverage(std::string &output_prefix, std::string dataset, int query_n, std::string &base_label_file, float coverage_threshold);
       void generate_queries_method1_low_coverage(
           std::string &output_prefix,
           std::string dataset,

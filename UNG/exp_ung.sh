@@ -33,13 +33,12 @@ cat "$CONFIG_FILE" | jq -c '.experiments[]' | while read -r experiment; do
         --K "$(echo "$experiment" | jq -r '.K')" \
         --num_repeats "$(echo "$experiment" | jq -r '.num_repeats')" \
         --generate_query "$(echo "$experiment" | jq -r '.generate_query')" \
-        --generate_query_task "$(echo "$experiment" | jq -r '.generate_query_task')" 
+        --generate_query_task "$(echo "$experiment" | jq -r '.generate_query_task')" \
+        --method1_high_coverage_p "$(echo "$experiment" | jq -r '.method1_high_coverage_p')"
+        
    
     echo "数据集 $dataset 处理完成"
     echo "============================================"
 done
 
-# echo "所有数据集处理完成，开始汇总结果..."
-# python3 ./data/summarize_csv.py ../../FilterVectorResults
-# echo "所有实验处理完成，结果已汇总。"
 echo "============================================="

@@ -47,7 +47,7 @@ endif()
 
 include(FetchContent)
 FetchContent_Declare(googletest
-  URL "file:///home/fengxiaoyao/ACORN_data/googletest-release-1.12.1.tar.gz")  # 使用本地路径
+  URL "file:///home/sunyahui/fxy/FilterVectorCode/thirdparty/googletest-release-1.12.1.tar.gz")  # 使用本地路径
 set(BUILD_GMOCK CACHE BOOL OFF)
 set(INSTALL_GTEST CACHE BOOL OFF)
 FetchContent_MakeAvailable(googletest)

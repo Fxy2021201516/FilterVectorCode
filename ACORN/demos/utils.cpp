@@ -57,11 +57,6 @@ using json = nlohmann::json;
  * and unzip it to the sudirectory sift1M.
  **/
 
-// MACRO
-// #define BASE_DIR "../ACORN_data/words/"
-// #define ATTR_DATA_DIR "../ACORN_data/words/attr_data"
-// #define MY_DIS_DIR "../ACORN_data/words/my_dis"
-// #define MY_DIS_SORT_DIR "../ACORN_data/words/my_filter_sorted_dis"
 
 #include <zlib.h>
 #include <cstring>
@@ -160,6 +155,18 @@ std::string get_file_name(std::string dataset, bool is_base, std::string BASE_DI
    else if (dataset == "captcha")
    {
       return BASE_DIR + "/" + (is_base ? "captcha_base" : "captcha_query") + ".fvecs";
+   }
+      else if (dataset == "russian")
+   {
+      return BASE_DIR + "/" + (is_base ? "russian_base" : "russian_query") + ".fvecs";
+   }
+   else if (dataset == "bookimg")
+   {
+      return BASE_DIR + "/" + (is_base ? "bookimg_base" : "bookimg_query") + ".fvecs";
+   }
+   else if (dataset == "TimeTravel")
+   {
+      return BASE_DIR + "/" + (is_base ? "TimeTravel_base" : "TimeTravel_query") + ".fvecs";
    }
    else
    {
@@ -667,9 +674,54 @@ std::vector<std::vector<int>> load_aq_multi(
       printf("loaded query attributes from: %s\n", filepath.c_str());
       return v;
    }
+      else if (dataset == "russian")
+   {
+      assert((alpha == -2 || alpha == 0 || alpha == 2) ||
+             !"alpha must be value in [-2, 0, 2]");
+
+      // Compose File Name
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/russian_query_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      printf("loaded query attributes from: %s\n", filepath.c_str());
+      return v;
+   }
+      else if (dataset == "bookimg")
+   {
+      assert((alpha == -2 || alpha == 0 || alpha == 2) ||
+             !"alpha must be value in [-2, 0, 2]");
+
+      // Compose File Name
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/bookimg_query_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      printf("loaded query attributes from: %s\n", filepath.c_str());
+      return v;
+   }
+      else if (dataset == "TimeTravel")
+   {
+      assert((alpha == -2 || alpha == 0 || alpha == 2) ||
+             !"alpha must be value in [-2, 0, 2]");
+
+      // Compose File Name
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/TimeTravel_query_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      printf("loaded query attributes from: %s\n", filepath.c_str());
+      return v;
+   }
    else
    {
-      std::cerr << "Invalid dataset in load_aq" << std::endl;
+      std::cerr << "Invalid dataset in load_aq_multi" << std::endl;
       return std::vector<std::vector<int>>();
    }
 }
@@ -856,13 +908,6 @@ std::vector<std::vector<int>> load_ab_muti(
       std::vector<std::vector<int>> v =
           load_txt_to_vector_multi<int>(filepath);
       printf("loaded base attributes from: %s\n", filepath.c_str());
-
-      // // print out data for debugging
-      // for (int i : v) {
-      //     std::cout << i << " ";
-      // }
-      // std::cout << std::endl;
-
       return v;
    }
    else if (dataset == "words")
@@ -875,20 +920,6 @@ std::vector<std::vector<int>> load_ab_muti(
           load_txt_to_vector_multi<int>(filepath);
       std::cout << "loaded base attributes from:" << filepath.c_str()
                 << std::endl;
-      return v;
-   }
-   else if (dataset == "TimeTravel")
-   {
-      std::stringstream filepath_stream;
-      filepath_stream << ATTR_DATA_DIR << "/base_attrs_TimeTravel_" << N
-                      << "_nc=" << n_centroids
-                      << "_assignment=" << assignment_type << ".json";
-      std::string filepath = filepath_stream.str();
-      // printf("%s\n", filepath.c_str());
-
-      std::vector<std::vector<int>> v =
-          load_txt_to_vector_multi<int>(filepath);
-      printf("loaded base attributes from: %s\n", filepath.c_str());
       return v;
    }
    else if (dataset == "MTG")
@@ -927,9 +958,45 @@ std::vector<std::vector<int>> load_ab_muti(
                 << std::endl;
       return v;
    }
+   else if (dataset == "russian")
+   {
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/russian_base_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      std::cout << "loaded base attributes from:" << filepath.c_str()
+                << std::endl;
+      return v;
+   }
+   else if (dataset == "bookimg")
+   {
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/bookimg_base_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      std::cout << "loaded base attributes from:" << filepath.c_str()
+                << std::endl;
+      return v;
+   }
+   else if (dataset == "TimeTravel")
+   {
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/TimeTravel_base_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      std::cout << "loaded base attributes from:" << filepath.c_str()
+                << std::endl;
+      return v;
+   }
    else
    {
-      std::cerr << "Invalid dataset in load_ab" << std::endl;
+      std::cerr << "Invalid dataset in load_ab_multi" << std::endl;
       return std::vector<std::vector<int>>();
    }
 }

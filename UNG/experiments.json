@@ -1,38 +1,40 @@
 {
    "experiments": [
       {
-         "dataset": "captcha",
-         "data_dir": "../../FilterVectorData/captcha",
-         "output_dir": "../../FilterVectorResults/UNG/captcha",
-         "num_query_sets": 3,
+         "dataset": "russian",
+         "data_dir": "../../FilterVectorData/russian",
+         "output_dir": "../../FilterVectorResults/UNG/russian",
+         "num_query_sets": 5,
          "max_degree": 32,
          "Lbuild": 100,
          "alpha": 1.2,
          "num_cross_edges": 6,
          "num_entry_points": 16,
-         "Lsearch_values": "100000 200000 300000 400000 500000 600000 700000 800000 900000 1000000 1100000 1200000",
+         "Lsearch_values": "10 15 20 25 30 35 40",
          "num_threads": 32,
          "K": 10,
          "num_repeats": 3,
-         "generate_query": false,
-         "generate_query_task": "method2_high_coverage"
+         "generate_query": true,
+         "generate_query_task": "method1_high_coverage",
+         "method1_high_coverage_p": 0.5
       },
       {
-         "dataset": "captcha",
-         "data_dir": "../../FilterVectorData/captcha",
-         "output_dir": "../../FilterVectorResults/UNG/captcha",
-         "num_query_sets": 4,
+         "dataset": "russian",
+         "data_dir": "../../FilterVectorData/russian",
+         "output_dir": "../../FilterVectorResults/UNG/russian",
+         "num_query_sets": 6,
          "max_degree": 32,
          "Lbuild": 100,
          "alpha": 1.2,
          "num_cross_edges": 6,
          "num_entry_points": 16,
-         "Lsearch_values": "100 200 300 400 500",
+         "Lsearch_values": "10 15 20 25 30 35 40",
          "num_threads": 32,
          "K": 10,
          "num_repeats": 3,
-         "generate_query": false,
-         "generate_query_task": "method2_low_coverage"
+         "generate_query": true,
+         "generate_query_task": "method1_low_coverage",
+         "method1_high_coverage_p": 0.5
       }
    ]
 }

@@ -108,6 +108,7 @@ mkdir -p "$RESULT_DIR"
     --base_bin_file "$DATA_DIR/${DATASET}_base.bin" \
     --base_label_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels.txt" \
     --base_label_info_file "$DATA_DIR/base_${NUM_QUERY_SETS}/${DATASET}_base_labels_info.log" \
+    --base_label_tree_roots "$DATA_DIR/base_${NUM_QUERY_SETS}/tree_roots.txt" \
     --index_path_prefix "$OUTPUT_DIR/index_files/" \
     --result_path_prefix "$RESULT_DIR/" \
     --scenario general \

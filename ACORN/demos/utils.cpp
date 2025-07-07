@@ -618,10 +618,7 @@ std::vector<std::vector<int>> load_aq_multi(
 
       // Compose File Name
       std::stringstream filepath_stream;
-      filepath_stream << ATTR_DATA_DIR
-                      << "/query_required_filters_TimeTravel_" << N
-                      << "_nc=" << n_centroids << "_alpha=" << alpha
-                      << ".json";
+      filepath_stream << ATTR_DATA_DIR << "/TimeTravel_query_labels.txt";
       std::string filepath = filepath_stream.str();
 
       std::vector<std::vector<int>> v =

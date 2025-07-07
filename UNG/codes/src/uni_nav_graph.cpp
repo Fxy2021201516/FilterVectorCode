@@ -41,6 +41,18 @@ struct QueryTask
    std::vector<uint32_t> labels; // 查询标签集
 };
 
+struct TreeInfo
+{
+   ANNS::IdxType root_group_id;
+   ANNS::LabelType root_label_id; // 存储概念上的根标签ID
+   size_t coverage_count;
+   // 用于按覆盖率降序排序
+   bool operator<(const TreeInfo &other) const
+   {
+      return coverage_count > other.coverage_count;
+   }
+};
+
 namespace ANNS
 {
 
@@ -2592,142 +2604,251 @@ namespace ANNS
       }
    }
 
-   // fxy_add: 极端方法2的查询任务生成：根据LNG树的深度信息生成查询任务
-   void UniNavGraph::generate_queries_method2_high_coverage(
-       std::string &output_prefix,
-       std::string dataset,
-       int query_n,
-       std::string &base_label_file,
-       std::string &base_label_info_file)
+   // fxy_add: 极端方法2的查询任务生成
+   void UniNavGraph::generate_queries_method2_high_coverage(int N, int K, int top_M_trees, std::string dataset, const std::string &output_prefix, const std::string &base_label_tree_roots)
    {
-      // Step 1: 读取LNG树信息文件获取总层数
-      std::ifstream info_file(base_label_info_file);
-      if (!info_file.is_open())
+      std::cout << "\n==================================================" << std::endl;
+      std::cout << "--- 开始生成极端查询任务 ---" << std::endl;
+
+      if (_num_groups == 0)
       {
-         std::cerr << "Failed to open LNG info file: " << base_label_info_file << std::endl;
+         std::cerr << "错误: 索引未构建或不包含任何分组。" << std::endl;
          return;
       }
 
-      int total_layers = 0;
-      std::string line;
-      while (std::getline(info_file, line))
+      // --- 预处理阶段 ---
+
+      // 1. 读取Python生成的树根标签ID
+      std::cout << "步骤1: 读取 'tree_roots.txt' 文件..." << std::endl;
+      std::vector<LabelType> conceptual_root_labels;
+      std::ifstream roots_file(base_label_tree_roots);
+      if (!roots_file.is_open())
       {
-         if (line.find("总层数:") != std::string::npos)
+         std::cerr << "错误: 无法打开 tree_roots.txt 文件！请确保已运行Python脚本生成此文件。" << std::endl;
+         return;
+      }
+      LabelType root_label_from_file;
+      while (roots_file >> root_label_from_file)
+      {
+         conceptual_root_labels.push_back(root_label_from_file);
+      }
+      roots_file.close();
+      std::cout << "成功读取 " << conceptual_root_labels.size() << " 个概念树根标签。" << std::endl;
+
+      // 2. 识别树结构，并将概念树根(Label ID)与物理树根(Group ID)关联，同时计算覆盖率
+      std::cout << "步骤2: 识别树结构并计算覆盖率..." << std::endl;
+      std::vector<TreeInfo> sorted_trees;
+      std::unordered_map<IdxType, IdxType> group_to_root_group;
+      {
+         std::vector<int> parent(_num_groups + 1, 0);
+         for (ANNS::IdxType i = 1; i <= _num_groups; ++i)
          {
-            size_t pos = line.find(":");
-            if (pos != std::string::npos)
+            for (auto child : _label_nav_graph->out_neighbors[i])
             {
-               total_layers = std::stoi(line.substr(pos + 1));
-               break;
+               parent[child] = i;
+            }
+         }
+         for (ANNS::IdxType i = 1; i <= _num_groups; ++i)
+         {
+            ANNS::IdxType current = i;
+            while (parent[current] != 0)
+               current = parent[current];
+            group_to_root_group[i] = current;
+         }
+      }
+
+      std::map<IdxType, size_t> physical_root_coverage;
+      for (IdxType group_id = 1; group_id <= _num_groups; ++group_id)
+      {
+         physical_root_coverage[group_to_root_group[group_id]] += _group_id_to_vec_ids[group_id].size();
+      }
+
+      for (LabelType root_label : conceptual_root_labels)
+      {
+         auto node = _trie_index.find_exact_match({root_label});
+         if (node)
+         {
+            IdxType root_group_id = node->group_id;
+            if (physical_root_coverage.count(root_group_id))
+            {
+               sorted_trees.push_back({root_group_id, root_label, physical_root_coverage.at(root_group_id)});
+            }
+         }
+         else
+         {
+            std::cout << "警告: 无法在Trie中找到标签 {" << root_label << "} 对应的Group。" << std::endl;
+         }
+      }
+      std::sort(sorted_trees.begin(), sorted_trees.end());
+
+      // 3. 筛选Top-M树并构建深度样本池
+      if (top_M_trees > 0 && top_M_trees < sorted_trees.size())
+      {
+         sorted_trees.resize(top_M_trees);
+      }
+      std::cout << "将从覆盖率最高的 " << sorted_trees.size() << " 棵树中生成查询。" << std::endl;
+
+      std::map<IdxType, int> tree_max_depth;
+      std::map<IdxType, std::vector<IdxType>> per_tree_deep_ids;
+      for (const auto &tree_info : sorted_trees)
+      {
+         IdxType root_group_id = tree_info.root_group_id;
+         int current_max_depth = 0;
+         for (ANNS::IdxType group_id = 1; group_id <= _num_groups; ++group_id)
+         {
+            if (group_to_root_group.count(group_id) && group_to_root_group.at(group_id) == root_group_id)
+            {
+               current_max_depth = std::max(current_max_depth, (int)_group_id_to_label_set[group_id].size());
+            }
+         }
+         tree_max_depth[root_group_id] = current_max_depth;
+
+         int deep_threshold = static_cast<int>(current_max_depth * 0.67);
+         for (ANNS::IdxType group_id = 1; group_id <= _num_groups; ++group_id)
+         {
+            if (group_to_root_group.count(group_id) && group_to_root_group.at(group_id) == root_group_id && _group_id_to_label_set[group_id].size() > deep_threshold)
+            {
+               per_tree_deep_ids[root_group_id].insert(per_tree_deep_ids[root_group_id].end(), _group_id_to_vec_ids[group_id].begin(), _group_id_to_vec_ids[group_id].end());
+            }
+         }
+         std::cout << "  - 树 (根标签/组ID: " << tree_info.root_label_id << "/" << root_group_id << "): 最大深度=" << tree_max_depth[root_group_id] << ", 深度阈值(>" << deep_threshold << "), 深度样本数=" << per_tree_deep_ids[root_group_id].size() << std::endl;
+      }
+
+      // 4. 按比例分配N个查询
+      std::vector<int> query_allocations;
+      size_t total_top_coverage = 0;
+      for (const auto &tree_info : sorted_trees)
+      {
+         total_top_coverage += tree_info.coverage_count;
+      }
+      if (total_top_coverage > 0)
+      {
+         int allocated_queries = 0;
+         for (size_t i = 0; i < sorted_trees.size(); ++i)
+         {
+            if (i == sorted_trees.size() - 1)
+            {
+               query_allocations.push_back(N - allocated_queries);
+            }
+            else
+            {
+               double proportion = static_cast<double>(sorted_trees[i].coverage_count) / total_top_coverage;
+               int num = static_cast<int>(N * proportion);
+               query_allocations.push_back(num);
+               allocated_queries += num;
             }
          }
       }
-      info_file.close();
 
-      if (total_layers == 0)
-      {
-         std::cerr << "Error: Could not determine total layers from LNG info file" << std::endl;
-         return;
-      }
+      // --- 查询生成阶段 ---
+      std::cout << "步骤3: 开始为K近邻场景生成查询..." << std::endl;
 
-      // 计算顶层深度
-      // int max_depth_top = std::max(1, total_layers / 10);
-      int max_depth_top = 3;
-      std::cout << "Total layers: " << total_layers << ", Top layers to use: " << max_depth_top << std::endl;
-
-      // Step 2: 读取base_labels文件获取顶层标签
-      std::ifstream label_file(base_label_file);
-      if (!label_file.is_open())
-      {
-         std::cerr << "Failed to open base label file: " << base_label_file << std::endl;
-         return;
-      }
-
-      std::vector<std::vector<int>> top_layer_labels;
-      int lines_read = 0;
-      while (std::getline(label_file, line) && lines_read < max_depth_top)
-      {
-         std::vector<int> labels;
-         std::stringstream ss(line);
-         std::string label_str;
-
-         while (std::getline(ss, label_str, ','))
-         {
-            labels.push_back(std::stoi(label_str));
-         }
-
-         if (!labels.empty())
-         {
-            top_layer_labels.push_back(labels);
-            lines_read++;
-         }
-      }
-      label_file.close();
-
-      if (top_layer_labels.empty())
-      {
-         std::cerr << "Error: No valid labels found in base label file" << std::endl;
-         return;
-      }
-
-      // Step 3: 准备输出文件
-      std::ofstream txt_file(output_prefix + "/" + dataset + "_query_labels.txt");
-      std::ofstream fvec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
-
-      if (!txt_file.is_open() || !fvec_file.is_open())
-      {
-         std::cerr << "Failed to open output files" << std::endl;
-         return;
-      }
-
+      std::ofstream query_vec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
+      std::ofstream query_label_file(output_prefix + "/" + dataset + "_query_labels.txt");
+      std::ofstream ground_truth_file(output_prefix + "/" + dataset + "_groundtruth.txt");
       uint32_t dim = _base_storage->get_dim();
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<ANNS::IdxType> vec_dis(0, _base_storage->get_num_points() - 1);
-      std::unordered_set<ANNS::IdxType> used_vec_ids;
 
-      // Step 4: 生成查询任务
-      int queries_generated = 0;
-      while (queries_generated < query_n)
+      std::unordered_map<IdxType, IdxType> old_to_new_map;
+      for (IdxType new_id = 0; new_id < _num_points; ++new_id)
       {
-         // 循环使用顶层标签
-         const auto &labels = top_layer_labels[queries_generated % top_layer_labels.size()];
-
-         // 写入标签文件
-         for (size_t j = 0; j < labels.size(); ++j)
-         {
-            txt_file << labels[j];
-            if (j != labels.size() - 1)
-            {
-               txt_file << ",";
-            }
-         }
-         txt_file << std::endl;
-
-         // 随机选择一个不重复的向量
-         ANNS::IdxType vec_id;
-         do
-         {
-            vec_id = vec_dis(gen);
-         } while (used_vec_ids.count(vec_id) > 0 &&
-                  used_vec_ids.size() < _base_storage->get_num_points());
-
-         used_vec_ids.insert(vec_id);
-         const char *vec_data = _base_storage->get_vector(vec_id);
-
-         // 写入向量文件
-         fvec_file.write((char *)&dim, sizeof(uint32_t));
-         fvec_file.write(vec_data, dim * sizeof(float));
-
-         queries_generated++;
+         old_to_new_map[_new_to_old_vec_ids[new_id]] = new_id;
       }
 
-      txt_file.close();
-      fvec_file.close();
+      std::mt19937 rng(std::random_device{}());
+      int queries_generated = 0;
 
-      std::cout << "Generated " << queries_generated << " queries based on LNG depth" << std::endl;
-      std::cout << "Labels written to: " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
-      std::cout << "Vectors written to: " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
+      for (size_t i = 0; i < sorted_trees.size(); ++i)
+      {
+         IdxType root_group_id = sorted_trees[i].root_group_id;
+         LabelType root_label_id = sorted_trees[i].root_label_id;
+         int queries_to_gen_for_this_tree = query_allocations[i];
+         const auto &local_deep_pool = per_tree_deep_ids[root_group_id];
+
+         if (local_deep_pool.size() < K)
+         {
+            std::cout << "警告: 树 (根标签 " << root_label_id << ") 的深度样本数 (" << local_deep_pool.size() << ") 小于 K (" << K << ")，跳过此树。" << std::endl;
+            continue;
+         }
+
+         std::cout << "正在为 树 (根标签 " << root_label_id << ") 生成 " << queries_to_gen_for_this_tree << " 个查询..." << std::endl;
+
+         for (int j = 0; j < queries_to_gen_for_this_tree; ++j)
+         {
+            if (queries_generated >= N)
+               break;
+
+            std::uniform_int_distribution<size_t> dist(0, local_deep_pool.size() - 1);
+            IdxType seed_original_id = local_deep_pool[dist(rng)];
+
+            std::vector<float> seed_vec(dim);
+            IdxType seed_new_id = old_to_new_map.at(seed_original_id);
+            memcpy(seed_vec.data(), _base_storage->get_vector(seed_new_id), dim * sizeof(float));
+
+            std::priority_queue<std::pair<float, IdxType>> top_k_queue;
+            for (IdxType candidate_original_id : local_deep_pool)
+            {
+               if (candidate_original_id == seed_original_id)
+                  continue;
+
+               IdxType candidate_new_id = old_to_new_map.at(candidate_original_id);
+               float distance = _distance_handler->compute(reinterpret_cast<const char *>(seed_vec.data()), _base_storage->get_vector(candidate_new_id), dim);
+
+               if (top_k_queue.size() < (size_t)K - 1)
+               {
+                  top_k_queue.push({distance, candidate_original_id});
+               }
+               else if (distance < top_k_queue.top().first)
+               {
+                  top_k_queue.pop();
+                  top_k_queue.push({distance, candidate_original_id});
+               }
+            }
+
+            std::vector<IdxType> ground_truth_ids;
+            ground_truth_ids.push_back(seed_original_id);
+            while (!top_k_queue.empty())
+            {
+               ground_truth_ids.push_back(top_k_queue.top().second);
+               top_k_queue.pop();
+            }
+
+            std::vector<float> centroid_vec(dim, 0.0f);
+            for (IdxType gt_id : ground_truth_ids)
+            {
+               IdxType new_id = old_to_new_map.at(gt_id);
+               const float *vec = reinterpret_cast<const float *>(_base_storage->get_vector(new_id));
+               for (uint32_t d = 0; d < dim; ++d)
+                  centroid_vec[d] += vec[d];
+            }
+            for (uint32_t d = 0; d < dim; ++d)
+               centroid_vec[d] /= K;
+            // 此处添加噪声和归一化 ?
+
+            query_vec_file.write(reinterpret_cast<const char *>(&dim), sizeof(uint32_t));
+            query_vec_file.write(reinterpret_cast<const char *>(centroid_vec.data()), dim * sizeof(float));
+
+            query_label_file << root_label_id << "\n";
+
+            for (size_t gt_idx = 0; gt_idx < ground_truth_ids.size(); ++gt_idx)
+            {
+               ground_truth_file << ground_truth_ids[gt_idx] << (gt_idx == ground_truth_ids.size() - 1 ? "" : "\t");
+            }
+            ground_truth_file << "\n";
+
+            queries_generated++;
+         }
+         if (queries_generated >= N)
+            break;
+      }
+
+      query_vec_file.close();
+      query_label_file.close();
+      ground_truth_file.close();
+
+      std::cout << "\n--- 查询生成结束：共生成 " << queries_generated << " 个查询任务 ---" << std::endl;
+      std::cout << "查询向量已保存到: " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
+      std::cout << "查询标签已保存到: " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
+      std::cout << "Ground Truth已保存到: " << output_prefix + "/" + dataset + "_groundtruth.txt" << std::endl;
    }
 
    // fxy_add: 极端方法2的查询任务生成低覆盖率的查询任务（基于 count ∈ [K, max_K]）
@@ -2962,6 +3083,144 @@ namespace ANNS
       std::cout << "Generated " << std::min(query_n, (int)valid_combinations.size())
                 << " queries with count in [" << K << ", " << max_K << "]\n";
       std::cout << "Unique combinations found: " << valid_combinations.size() << "\n";
+   }
+
+   // fxy_add: 人造数据：极端方法2的查询任务生成：根据LNG树的深度信息生成查询任务
+   void UniNavGraph::generate_queries_method2_high_coverage_human(
+       std::string &output_prefix,
+       std::string dataset,
+       int query_n,
+       std::string &base_label_file,
+       std::string &base_label_info_file)
+   {
+      // Step 1: 读取LNG树信息文件获取总层数
+      std::ifstream info_file(base_label_info_file);
+      if (!info_file.is_open())
+      {
+         std::cerr << "Failed to open LNG info file: " << base_label_info_file << std::endl;
+         return;
+      }
+
+      int total_layers = 0;
+      std::string line;
+      while (std::getline(info_file, line))
+      {
+         if (line.find("总层数:") != std::string::npos)
+         {
+            size_t pos = line.find(":");
+            if (pos != std::string::npos)
+            {
+               total_layers = std::stoi(line.substr(pos + 1));
+               break;
+            }
+         }
+      }
+      info_file.close();
+
+      if (total_layers == 0)
+      {
+         std::cerr << "Error: Could not determine total layers from LNG info file" << std::endl;
+         return;
+      }
+
+      // 计算顶层深度
+      // int max_depth_top = std::max(1, total_layers / 10);
+      int max_depth_top = 3;
+      std::cout << "Total layers: " << total_layers << ", Top layers to use: " << max_depth_top << std::endl;
+
+      // Step 2: 读取base_labels文件获取顶层标签
+      std::ifstream label_file(base_label_file);
+      if (!label_file.is_open())
+      {
+         std::cerr << "Failed to open base label file: " << base_label_file << std::endl;
+         return;
+      }
+
+      std::vector<std::vector<int>> top_layer_labels;
+      int lines_read = 0;
+      while (std::getline(label_file, line) && lines_read < max_depth_top)
+      {
+         std::vector<int> labels;
+         std::stringstream ss(line);
+         std::string label_str;
+
+         while (std::getline(ss, label_str, ','))
+         {
+            labels.push_back(std::stoi(label_str));
+         }
+
+         if (!labels.empty())
+         {
+            top_layer_labels.push_back(labels);
+            lines_read++;
+         }
+      }
+      label_file.close();
+
+      if (top_layer_labels.empty())
+      {
+         std::cerr << "Error: No valid labels found in base label file" << std::endl;
+         return;
+      }
+
+      // Step 3: 准备输出文件
+      std::ofstream txt_file(output_prefix + "/" + dataset + "_query_labels.txt");
+      std::ofstream fvec_file(output_prefix + "/" + dataset + "_query.fvecs", std::ios::binary);
+
+      if (!txt_file.is_open() || !fvec_file.is_open())
+      {
+         std::cerr << "Failed to open output files" << std::endl;
+         return;
+      }
+
+      uint32_t dim = _base_storage->get_dim();
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_int_distribution<ANNS::IdxType> vec_dis(0, _base_storage->get_num_points() - 1);
+      std::unordered_set<ANNS::IdxType> used_vec_ids;
+
+      // Step 4: 生成查询任务
+      int queries_generated = 0;
+      while (queries_generated < query_n)
+      {
+         // 循环使用顶层标签
+         const auto &labels = top_layer_labels[queries_generated % top_layer_labels.size()];
+
+         // 写入标签文件
+         for (size_t j = 0; j < labels.size(); ++j)
+         {
+            txt_file << labels[j];
+            if (j != labels.size() - 1)
+            {
+               txt_file << ",";
+            }
+         }
+         txt_file << std::endl;
+
+         // 随机选择一个不重复的向量
+         ANNS::IdxType vec_id;
+         do
+         {
+            vec_id = vec_dis(gen);
+         } while (used_vec_ids.count(vec_id) > 0 &&
+                  used_vec_ids.size() < _base_storage->get_num_points());
+
+         used_vec_ids.insert(vec_id);
+         const char *vec_data = _base_storage->get_vector(vec_id);
+
+         // 写入向量文件
+         fvec_file.write((char *)&dim, sizeof(uint32_t));
+         fvec_file.write(vec_data, dim * sizeof(float));
+
+         queries_generated++;
+      }
+
+      txt_file.close();
+      fvec_file.close();
+
+      std::cout << "Generated " << queries_generated << " queries based on LNG depth" << std::endl;
+      std::cout << "Labels written to: " << output_prefix + "/" + dataset + "_query_labels.txt" << std::endl;
+      std::cout << "Vectors written to: " << output_prefix + "/" + dataset + "_query.fvecs" << std::endl;
    }
 
    // ===================================end：生成query task========================================

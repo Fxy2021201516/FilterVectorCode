@@ -78,7 +78,8 @@ namespace ANNS
           int num_of_per_query_labels,
           float coverage_threshold,
           int K);
-      void generate_queries_method2_high_coverage(
+      void generate_queries_method2_high_coverage(int N, int K, int top_M_trees, std::string dataset, const std::string &output_prefix, const std::string &base_label_tree_roots);
+      void generate_queries_method2_high_coverage_human(
           std::string &output_prefix,
           std::string dataset,
           int query_n,

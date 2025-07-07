@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 {
 
    // common auguments
-   std::string data_type, dist_fn, base_bin_file, base_label_file, base_label_info_file, index_path_prefix, result_path_prefix;
+   std::string data_type, dist_fn, base_bin_file, base_label_file, base_label_info_file, base_label_tree_roots, index_path_prefix, result_path_prefix;
    uint32_t num_threads;
    ANNS::IdxType num_cross_edges;
 
@@ -42,6 +42,8 @@ int main(int argc, char **argv)
                          "Base label file in txt format");
       desc.add_options()("base_label_info_file", po::value<std::string>(&base_label_info_file)->required(),
                          "Base label info file in log format");
+      desc.add_options()("base_label_tree_roots", po::value<std::string>(&base_label_tree_roots)->required(),
+                         "base_label_tree_roots");
       desc.add_options()("num_threads", po::value<uint32_t>(&num_threads)->default_value(1),
                          "Number of threads to use");
       desc.add_options()("index_path_prefix", po::value<std::string>(&index_path_prefix)->required(),
@@ -135,7 +137,8 @@ int main(int argc, char **argv)
       }
       else if (generate_query_task == "method2_high_coverage") // 极端数据方法2-高覆盖率
       {
-         index.generate_queries_method2_high_coverage(query_file_path, dataset, 1000, base_label_file, base_label_info_file);
+         //(int N, int K, int top_M_trees, std::string dataset, const std::string &output_prefix, const std::string &base_label_tree_roots);
+         index.generate_queries_method2_high_coverage(1000, 10, 2, dataset, query_file_path, base_label_tree_roots);
       }
       else if (generate_query_task == "method2_low_coverage") // 极端数据方法2-低覆盖率
       {

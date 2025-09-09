@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import plot_tree, export_text
+from sklearn.tree import export_text
 import matplotlib.pyplot as plt
 import warnings
 import os
@@ -46,16 +46,17 @@ def load_and_prepare_data(dataset_path, global_metrics_df):
     merged_data = pd.merge(combined_data, global_metrics_df, left_on='merge_key', right_index=True, how='left')
     merged_data.drop(columns=['merge_key'], inplace=True)
     merged_data['dataset_source'] = dataset_name
+    print(f"'{dataset_name}' 数据集加载并合并完成，包含 {len(merged_data)} 条记录。")
     return merged_data
 
 
-def build_random_forest_selector_enhanced(data, model_name):
+def build_random_forest_selector_enhanced(data, model_name, data_summary_stats):
     """
-    使用随机森林训练、评估并进行深度分析。
+    使用随机森林训练、评估、进行深度分析，并生成包含数据统计的完整报告。
     """
     try:
-        # --- 数据准备和特征工程 ---
-        print(f"--- 开始为 '{model_name}' 构建、评估并深度分析随机森林 ---")
+        # --- 0. 数据准备和特征工程 ---
+        print(f"\n--- 开始为 '{model_name}' 构建、评估并深度分析随机森林 ---")
         
         numeric_cols = [
             'TrieNodePass_T', 'TrieNodePass_F', 'CandSize', 'QuerySize',
@@ -80,14 +81,24 @@ def build_random_forest_selector_enhanced(data, model_name):
         y = analysis_data['choose_method_T']
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
 
-        # --- 训练随机森林模型 ---
-        print("--- 正在训练随机森林模型 (启用OOB评估) ---")
+        # --- 收集用于报告的详细统计数据 ---
+        report_stats = {
+            "dataset_summary": data_summary_stats,
+            "total_initial_samples": len(data),
+            "cleaned_samples": len(analysis_data),
+            "train_samples": len(X_train),
+            "test_samples": len(X_test),
+            "target_dist": data['choose_method_T'].value_counts(normalize=True)
+        }
+
+        # --- 1. 训练随机森林模型 ---
+        print("\n--- 正在训练随机森林模型 (启用OOB评估) ---")
         rf_classifier = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42, n_jobs=-1, oob_score=True)
         rf_classifier.fit(X_train, y_train)
         oob_score = rf_classifier.oob_score_
         print(f"模型训练完成。袋外分数 (OOB Score): {oob_score:.4f}\n")
 
-        # --- 性能评估 ---
+        # --- 2. 性能评估 ---
         print("--- 正在使用测试集评估模型性能 ---")
         y_pred = rf_classifier.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
@@ -95,7 +106,7 @@ def build_random_forest_selector_enhanced(data, model_name):
         print(f"模型在测试集上的准确率 (Accuracy): {accuracy:.4f}")
         print("详细分类报告:\n", class_report)
 
-        # --- 特征重要性分析 ---
+        # --- 3. 特征重要性分析 ---
         print("--- 正在分析模型的全局特征重要性 ---")
         importances = rf_classifier.feature_importances_
         feature_importance_df = pd.DataFrame({
@@ -104,9 +115,9 @@ def build_random_forest_selector_enhanced(data, model_name):
         }).sort_values(by='Importance', ascending=False).reset_index(drop=True)
         print("模型认为的特征重要性排名:\n", feature_importance_df, "\n")
         
-        # --- [新增] 部分依赖图 (Partial Dependence Plots) ---
+        # --- 4. 部分依赖图 (Partial Dependence Plots) ---
         pdp_filename = f"partial_dependence_plots_{model_name}.png"
-        print(f"--- [新增] 正在生成部分依赖图并保存到: {pdp_filename} ---")
+        print(f"--- 正在生成部分依赖图并保存到: {pdp_filename} ---")
         top_features_for_pdp = feature_importance_df['Feature'].head(3).tolist()
         
         fig, ax = plt.subplots(figsize=(15, 5), ncols=len(top_features_for_pdp))
@@ -121,19 +132,30 @@ def build_random_forest_selector_enhanced(data, model_name):
             line_kw={"color": "crimson", "linewidth": 3}
         )
         fig.suptitle('Partial Dependence Plots: Feature Value vs. Probability of Choosing Method T', fontsize=16)
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         plt.savefig(pdp_filename)
         plt.close()
         print(f"部分依赖图已成功保存。\n")
 
-
-        # --- 生成最终的增强版报告 ---
+        # --- 5. 生成最终的报告 ---
         report_filename = f"analysis_report_RF_{model_name}.txt"
-        print(f"--- 正在生成增强版文本分析报告: {report_filename} ---")
+        print(f"--- 正在生成包含数据统计的分析报告: {report_filename} ---")
         
         with open(report_filename, "w", encoding="utf-8") as f:
             f.write(f"自适应查询优化器深度分析报告 (随机森林模型) - {model_name}\n")
             f.write("="*60 + "\n\n")
+
+            f.write("0. 数据集摘要与统计\n")
+            f.write("-" * 30 + "\n")
+            f.write(report_stats["dataset_summary"] + "\n\n")
+            f.write(f"合并后总样本数: {report_stats['total_initial_samples']}\n")
+            f.write(f"数据清洗后有效样本数: {report_stats['cleaned_samples']}\n\n")
+            f.write(f"训练集样本数: {report_stats['train_samples']}\n")
+            f.write(f"测试集样本数: {report_stats['test_samples']}\n\n")
+            f.write("目标变量分布:\n")
+            f.write(f" - 推荐方法T (占比): {report_stats['target_dist'].get(1, 0):.2%}\n")
+            f.write(f" - 推荐方法F (占比): {report_stats['target_dist'].get(0, 0):.2%}\n\n\n")
+
             f.write("1. 模型摘要与性能评估\n")
             f.write("-" * 30 + "\n")
             f.write(f"模型类型: 随机森林分类器 (RandomForestClassifier)\n")
@@ -154,17 +176,41 @@ def build_random_forest_selector_enhanced(data, model_name):
             f.write(f"部分依赖图 ({pdp_filename}) 可视化了核心特征如何影响模型的决策概率。\n")
             f.write("例如，查看 'Avg_CandSize' 的图，可以看到随着候选集大小的变化，\n模型推荐使用方法T（递归法）的概率是如何上升或下降的，这揭示了模型学到的具体规律。\n\n")
 
-            f.write("4. 随机森林代表树规则示例 (共3棵)\n")
-            f.write("-" * 30 + "\n")
-            f.write("注意：以下规则仅来自森林100棵树中的3棵代表，用于直观理解模型可能的决策逻辑。\n最终决策由所有树投票产生，其总体行为由特征重要性和部分依赖图更好地概括。\n\n")
+            # f.write("4. 随机森林代表树规则示例 (共3棵)\n")
+            # f.write("-" * 30 + "\n")
+            # f.write("注意：以下规则仅来自森林100棵树中的3棵代表，用于直观理解模型可能的决策逻辑。\n最终决策由所有树投票产生，其总体行为由特征重要性和部分依赖图更好地概括。\n\n")
             
-            for i in range(min(3, len(rf_classifier.estimators_))):
-                f.write(f"--- 代表树 #{i+1} ---\n")
-                tree_rules_text = export_text(rf_classifier.estimators_[i], feature_names=pre_computable_features)
+            # for i in range(min(3, len(rf_classifier.estimators_))):
+            #     f.write(f"--- 代表树 #{i+1} ---\n")
+            #     tree_rules_text = export_text(rf_classifier.estimators_[i], feature_names=pre_computable_features)
+            #     f.write(tree_rules_text)
+            #     f.write("\n\n")
+
+            f.write("4. 随机森林代表树规则示例 (按使用特征数量排序)\n")
+            f.write("-" * 30 + "\n")
+            f.write("注意：以下规则来自森林100棵树中，使用了最多不同特征的3棵代表树。\n这有助于直观理解模型如何综合运用多个指标进行决策。\n最终决策由所有树投票产生。\n\n")
+            
+            # 计算每棵树使用的独特特征数量
+            tree_feature_counts = []
+            for i, tree_estimator in enumerate(rf_classifier.estimators_):
+                # tree.tree_.feature 存储每个节点用于分裂的特征索引
+                # -2 代表叶节点，没有分裂特征
+                used_features = set(tree_estimator.tree_.feature)
+                used_features.discard(-2)  # 移除叶节点标记
+                tree_feature_counts.append((i, len(used_features), tree_estimator))
+
+            # 根据使用的特征数量对树进行降序排序
+            tree_feature_counts.sort(key=lambda x: x[1], reverse=True)
+
+            # 打印使用特征最多的前3棵树的规则
+            for i in range(min(3, len(tree_feature_counts))):
+                tree_index, feature_count, tree_estimator = tree_feature_counts[i]
+                f.write(f"--- 代表树 #{i+1} (原森林中索引: {tree_index}, 使用了 {feature_count} 个不同特征) ---\n")
+                tree_rules_text = export_text(tree_estimator, feature_names=pre_computable_features)
                 f.write(tree_rules_text)
                 f.write("\n\n")
 
-        print(f"增强版报告已成功保存到 {report_filename}")
+        print(f"报告已成功保存到 {report_filename}")
 
     except Exception as e:
         print(f"处理模型 '{model_name}' 时发生错误: {e}")
@@ -176,8 +222,9 @@ def build_random_forest_selector_enhanced(data, model_name):
 if __name__ == '__main__':
     base_dir = '/data/fxy/FilterVector/FilterVectorResults/merge_results/improve2/U_nT_rms'
     global_metrics_file = os.path.join(base_dir, 'consolidated_results.csv')
+    
     if not os.path.exists(base_dir) or not os.path.exists(global_metrics_file):
-        print("错误：基础目录或全局指标文件不存在。")
+        print(f"错误：基础目录 '{base_dir}' 或全局指标文件 '{global_metrics_file}' 不存在。请检查路径。")
         exit()
 
     # 加载全局指标文件
@@ -195,20 +242,28 @@ if __name__ == '__main__':
         print(f"加载或处理全局指标文件时出错: {e}")
         exit()
 
-    # 加载所有数据集
+    # 加载所有数据集并收集统计信息
     all_prepared_data = []
+    dataset_stats_list = []
     for entry in os.scandir(base_dir):
         if entry.is_dir():
             dataset_path = entry.path
             prepared_data = load_and_prepare_data(dataset_path, global_df)
             if prepared_data is not None and not prepared_data.empty:
                 all_prepared_data.append(prepared_data)
+                # 收集每个数据集的统计信息
+                dataset_stats_list.append(f" - '{os.path.basename(dataset_path)}': {len(prepared_data)} 条")
     
-    # 运行增强版分析
+    # 运行分析
     if not all_prepared_data:
         print("错误：未能从任何数据集中加载有效数据，程序终止。")
     else:
         print("\n--- 所有数据集处理完毕，正在合并数据以进行全局训练 ---")
         combined_dataset = pd.concat(all_prepared_data, ignore_index=True)
         print(f"数据合并完成，总样本数: {len(combined_dataset)}\n")
-        build_random_forest_selector_enhanced(combined_dataset, "ALL_DATASETS_RF")
+
+        # 准备要传入报告的数据摘要
+        data_summary_report_str = f"共发现并处理 {len(dataset_stats_list)} 个数据集:\n" + "\n".join(dataset_stats_list)
+
+        # 调用核心分析函数，并传入数据摘要
+        build_random_forest_selector_enhanced(combined_dataset, "ALL_DATASETS_RF", data_summary_report_str)

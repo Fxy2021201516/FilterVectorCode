@@ -1,17 +1,17 @@
 {
    "experiments": [
       {
-         "dataset": "amazing_file_1_10_10",
-         "N": 397251,
+         "dataset": "app_reviews",
+         "N": 288065,
          "M": 32,
          "M_beta": 64,
          "gamma": 80,
-         "query_num": 10,
+         "query_num": 7,
          "threads": 32,
-         "efs_start": 200,
-         "efs_end": 2000,
-         "efs_step": 200,
-         "repeat_num": 3,
+         "efs_start": 300,
+         "efs_end": 3000,
+         "efs_step": 300,
+         "repeat_num": 2,
          "if_bfs_filter": true
       }
    ]

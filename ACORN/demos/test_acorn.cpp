@@ -111,7 +111,12 @@ int main(int argc, char *argv[])
       if (dataset != "sift1M" && dataset != "sift1M_test" &&
           dataset != "sift1B" && dataset != "tripclick" &&
           dataset != "paper" && dataset != "paper_rand2m" &&
-          dataset != "words" && dataset != "MTG" && dataset != "arxiv" && dataset != "captcha" && dataset != "TimeTravel" && dataset != "russian" && dataset != "bookimg" && dataset != "app_reviews" && dataset != "amazing_file" && dataset != "celeba" && dataset != "celeba_10" && dataset != "VariousTaggedImages") // TODO
+          dataset != "words" && dataset != "MTG" && dataset != "arxiv" && dataset != "captcha" && 
+          dataset != "TimeTravel" && dataset != "russian" && dataset != "bookimg" && 
+          dataset != "app_reviews" && dataset != "amazing_file" && 
+          dataset != "celeba" && dataset != "celeba_10" && 
+          dataset != "VariousTaggedImages"&&
+          dataset != "amazing_file_1_10_10"&& dataset != "arxiv_1_3_10") // TODO
       {
          printf("got dataset: %s\n", dataset.c_str());
          fprintf(stderr,
@@ -572,11 +577,58 @@ int main(int argc, char *argv[])
       std::cout << "nq:" << nq << std::endl;
 
       std::vector<char> filter_ids_map3(nq * N);
+
+      // 循环开始前定义一个辅助函数，用于打印 vector 内容，让输出更美观
+      auto print_attrs = [](const std::vector<int>& attrs) {
+         std::cout << "{ ";
+         for (size_t i = 0; i < attrs.size(); ++i) {
+            std::cout << attrs[i] << (i == attrs.size() - 1 ? " " : ", ");
+         }
+         std::cout << "}";
+      };
+
       for (int xq = 0; xq < nq; xq++)
       {
          for (int xb = 0; xb < N; xb++)
          {
-            const auto &query_attrs = aq[xq]; // 当前查询的属性列表（有序）
+            // ============= 调试代码块开始 =============
+            if (xq == 0 && (xb == 274662 || xb == 218632 || xb == 186884))
+            {
+                  std::cout << "\n--- [DEBUG] Checking a specific case ---" << std::endl;
+                  std::cout << "Query ID (xq): " << xq << std::endl;
+                  std::cout << "Data ID  (xb): " << xb << std::endl;
+
+                  const auto& query_attrs_debug = aq[xq];
+                  const auto& data_attrs_debug = metadata[xb];
+
+                  std::cout << "Query attributes: ";
+                  print_attrs(query_attrs_debug);
+                  std::cout << std::endl;
+
+                  std::cout << "Data attributes:  ";
+                  print_attrs(data_attrs_debug);
+                  std::cout << std::endl;
+
+                  // 在这里重新执行一次判断逻辑并打印中间步骤，帮助分析
+                  bool is_subset_debug = true;
+                  size_t i_debug = 0, j_debug = 0;
+                  while (i_debug < query_attrs_debug.size() && j_debug < data_attrs_debug.size()) {
+                     if (query_attrs_debug[i_debug] == data_attrs_debug[j_debug]) { i_debug++; j_debug++; }
+                     else if (query_attrs_debug[i_debug] > data_attrs_debug[j_debug]) { j_debug++; }
+                     else { is_subset_debug = false; break; }
+                  }
+                  if (i_debug < query_attrs_debug.size()) {
+                     is_subset_debug = false;
+                  }
+                  
+                  // 打印最终的判断结果
+                  std::cout << "is_subset result: " << (is_subset_debug ? "true" : "false") << std::endl;
+                  std::cout << "-------------------------------------\n" << std::endl;
+            }
+            // ============= 调试代码块结束 =============
+
+            // 原始的计算逻辑保持不变
+            const auto &query_attrs = aq[xq];
             const auto &data_attrs = metadata[xb];
 
             bool is_subset = true;
@@ -586,35 +638,23 @@ int main(int argc, char *argv[])
 
             while (i < query_size && j < data_size)
             {
-               if (query_attrs[i] == data_attrs[j])
-               {
-                  i++; // 匹配成功，检查下一个查询属性
-                  j++; // 继续检查 metadata 的下一个属性
-               }
-               else if (query_attrs[i] > data_attrs[j])
-               {
-                  j++; // metadata 当前值太小，往后找更大的
-               }
-               else
-               {
-                  is_subset = false; // query_attrs[i] <
-                                     // data_attrs[j]，缺少该属性
-                  break;
-               }
+                  if (query_attrs[i] == data_attrs[j]) { i++; j++; }
+                  else if (query_attrs[i] > data_attrs[j]) { j++; }
+                  else { is_subset = false; break; }
             }
 
-            // 如果 query_attrs 还没遍历完，说明 metadata 缺少某些属性
-            if (i < query_size)
-            {
-               is_subset = false;
+            if (i < query_size) {
+                  is_subset = false;
             }
 
             filter_ids_map3[xq * N + xb] = is_subset;
          }
       }
+
       std::cout << "filter_ids_map.size():" << filter_ids_map3.size()
                 << std::endl;
-      for (int repeat; repeat < repeat_num; repeat++)
+
+      for (int repeat = 0; repeat < repeat_num; repeat++)
       {
          for (int efs_id = 0; efs_id < efs_cnt; efs_id++)
          {

@@ -6,9 +6,9 @@ import glob
 
 # ==============================================================================
 # --- 配置区 ---
-DATASETS_TO_PROCESS = ['arxiv_1_3_10']
-dataset = "arxiv_1_3_10"
-FILE_DIR = "UNG_MEP"
+DATASETS_TO_PROCESS = ['amazing_file_1_10_10']
+dataset = "amazing_file_1_10_10"
+FILE_DIR = "UNG+ACORN"
 BASE_RESULTS_DIR = '/data/fxy/FilterVector/FilterVectorResults'
 OUTPUT_DIR = "/data/fxy/FilterVector/FilterVectorResults/merge_results/improve2/"+FILE_DIR+"/"
 
@@ -59,20 +59,31 @@ def main():
         success_count = 0
         for acorn_dir in acorn_exp_dirs:
             acorn_dir_name = os.path.basename(acorn_dir)
-            
-            # 从 FILE_DIR 目录名中用正则解析出通用参数
-            pattern = re.compile(
-               r".*?_query(\d+)_(nT(?:true|false))_(mep(?:true|false))_th(\d+)_M(\d+)_LB(\d+)_alpha([\d.]+)_C(\d+)_EP(\d+)_Ls(\d+)_Le(\d+)_Lp(\d+)_REPEATs(\d+)"
-            )
-            match = pattern.match(acorn_dir_name)
+            if FILE_DIR == "UNG_MEP":
+               pattern = re.compile(
+                  r".*?_query(\d+)_(nT(?:true|false))_(mep(?:true|false))_th(\d+)_M(\d+)_LB(\d+)_alpha([\d.]+)_C(\d+)_EP(\d+)_Ls(\d+)_Le(\d+)_Lp(\d+)_REPEATs(\d+)"
+               )
+               match = pattern.match(acorn_dir_name)
 
-            if not match:
-                print(f"  [SKIP] 无法从目录名中解析参数: {acorn_dir_name}")
-                continue
+               if not match:
+                  print(f"  [SKIP] 无法从目录名中解析参数: {acorn_dir_name}")
+                  continue
+               
+               # 构建对应的 UNG 目录名
+               (query, nT, mep,th, M, LB, alpha, C, EP, Ls, Le, Lp, REPEATs) = match.groups()
+               ung_dir_name = f"{dataset}_query{query}_{nT}_th{th}_M{M}_LB{LB}_alpha{alpha}_C{C}_EP{EP}_Ls{Ls}_Le{Le}_Lp{Lp}_REPEATs{REPEATs}"
             
-            # 构建对应的 UNG 目录名
-            (query, nT, mep,th, M, LB, alpha, C, EP, Ls, Le, Lp, REPEATs) = match.groups()
-            ung_dir_name = f"{dataset}_query{query}_{nT}_th{th}_M{M}_LB{LB}_alpha{alpha}_C{C}_EP{EP}_Ls{Ls}_Le{Le}_Lp{Lp}_REPEATs{REPEATs}"
+            else:
+               pattern = re.compile(
+                   r".*?_query(\d+)_(nT(?:true|false))_.*?_th(\d+).*?_M(\d+)_LB(\d+)_alpha([\d.]+)_C(\d+)_EP(\d+)_Ls(\d+)_Le(\d+)_Lp(\d+)_REPEATs(\d+)"
+               )
+               match = pattern.match(acorn_dir_name)
+               if not match:
+                   print(f"  [SKIP] 无法从目录名中解析参数: {acorn_dir_name}")
+                   continue
+               (query, nT, th, M, LB, alpha, C, EP, Ls, Le, Lp, REPEATs) = match.groups()
+               ung_dir_name = f"{dataset}_query{query}_{nT}_th{th}_M{M}_LB{LB}_alpha{alpha}_C{C}_EP{EP}_Ls{Ls}_Le{Le}_Lp{Lp}_REPEATs{REPEATs}"
+            
             
             # 查找配对的CSV文件
             acorn_csv_path = next(iter(glob.glob(os.path.join(acorn_dir, 'results', 'query_details_repeat*.csv'))), None)

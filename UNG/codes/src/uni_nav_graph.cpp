@@ -1468,6 +1468,8 @@ namespace ANNS
          std::cout << "[Step 1.5] Preparing input files and executing ACORN script..." << std::endl;
          std::string query_vec_path = new_cross_edge.acorn_in_ung_output_path + "/acorn_query_vectors.fvecs";
          std::string query_attr_path = new_cross_edge.acorn_in_ung_output_path + "/acorn_query_attrs.txt";
+         std::string gt_path = new_cross_edge.acorn_in_ung_output_path + "/ground_truth_cache";
+         std::string base_num = "base_0";
          write_fvecs(query_vec_path, final_query_vec_data, _base_storage->get_dim());
          write_labels_txt(query_attr_path, final_query_vec_labels);
          std::string output_neighbors_file = new_cross_edge.acorn_in_ung_output_path + "/R_neighbors_with_vectors.txt";
@@ -1476,7 +1478,8 @@ namespace ANNS
                 << dataset << " " << new_cross_edge.R_in_add_new_edge << " " << _base_storage->get_num_points() << " "
                 << new_cross_edge.M << " " << new_cross_edge.M_beta << " " << new_cross_edge.gamma << " " << new_cross_edge.efs << " "
                 << num_threads << " "
-                << query_vec_path << " " << query_attr_path << " " << new_cross_edge.acorn_in_ung_output_path << " 1";
+                << query_vec_path << " " << query_attr_path << " " << new_cross_edge.acorn_in_ung_output_path << " 1"
+                << " " << gt_path<<" "<<base_num; 
          std::string cmd = cmd_ss.str();
          std::cout << "  - Executing command: " << cmd << std::endl;
          int ret = system(cmd.c_str());
@@ -1552,9 +1555,6 @@ namespace ANNS
          std::cout << "  - Generated " << candidates.size() << " initial cross-group candidates from ACORN results." << std::endl;
          std::cout << "  - Skipped " << intra_group_edges_skipped << " potential edges because they were intra-group." << std::endl;
 
-         // ============================================================================================
-         // FXY_FIX: 这是策略一的最终修复版本
-         // ============================================================================================
          std::cout << "[Step 2] Adding new edges with smart selection logic and in-degree control (M=" << new_cross_edge.M_in_add_new_edge << ")..." << std::endl;
 
          // 1. 按“查询点”对所有候选邻居进行分组
@@ -1675,7 +1675,6 @@ namespace ANNS
          }
 
          std::cout << "\n--- [Cross-Edge Sub-step 3.5: ACORN Edge Connectivity Analysis] ---" << std::endl;
-         // ... (诊断分析的 cout 代码完全不变) ...
          size_t total_required_hierarchical_links = 0;
          for (IdxType group_id = 1; group_id <= _num_groups; ++group_id)
          {

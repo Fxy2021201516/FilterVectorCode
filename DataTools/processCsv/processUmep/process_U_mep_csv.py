@@ -7,7 +7,6 @@ from collections import defaultdict
 # ==============================================================================
 # --- 配置区 ---
 INPUT_DIR = '/data/fxy/FilterVector/FilterVectorResults/merge_results/improve2/UNG_MEP'
-# (修改：更新输出文件名以反映新的逻辑)
 OUTPUT_FILE = '/data/fxy/FilterVector/FilterVectorResults/merge_results/improve2/UNG_MEP/analysis_summary_recall_filtered.txt'
 # ==============================================================================
 

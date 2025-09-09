@@ -125,6 +125,35 @@
          "efs_step": 100,
          "repeat_num": 3,
          "if_bfs_filter": true
+      },
+
+      {
+         "dataset": "amazing_file_1_10_10",
+         "N": 397251,
+         "M": 32,
+         "M_beta": 64,
+         "gamma": 80,
+         "query_num": 0,
+         "threads": 32,
+         "efs_start": 200,
+         "efs_end": 2000,
+         "efs_step": 200,
+         "repeat_num": 2,
+         "if_bfs_filter": true
+      },
+      {
+         "dataset": "arxiv_1_3_10",
+         "N": 630420,
+         "M": 32,
+         "M_beta": 64,
+         "gamma": 80,
+         "query_num": 0,
+         "threads": 32,
+         "efs_start": 200,
+         "efs_end": 2000,
+         "efs_step": 200,
+         "repeat_num": 2,
+         "if_bfs_filter": true
       }
    ]
 }

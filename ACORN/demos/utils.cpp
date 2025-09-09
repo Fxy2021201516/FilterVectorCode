@@ -686,6 +686,21 @@ std::vector<std::vector<int>> load_aq_multi(
       printf("loaded query attributes from: %s\n", filepath.c_str());
       return v;
    }
+   else if (dataset == "arxiv_1_3_10")
+   {
+      assert((alpha == -2 || alpha == 0 || alpha == 2) ||
+             !"alpha must be value in [-2, 0, 2]");
+
+      // Compose File Name
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/arxiv_1_3_10_query_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      printf("loaded query attributes from: %s\n", filepath.c_str());
+      return v;
+   }
    else if (dataset == "russian")
    {
       assert((alpha == -2 || alpha == 0 || alpha == 2) ||
@@ -752,6 +767,20 @@ std::vector<std::vector<int>> load_aq_multi(
 
       std::stringstream filepath_stream;
       filepath_stream << ATTR_DATA_DIR << "/amazing_file_query_labels.txt";
+      std::string filepath = filepath_stream.str();
+
+      std::vector<std::vector<int>> v =
+          load_txt_to_vector_multi<int>(filepath);
+      printf("loaded query attributes from: %s\n", filepath.c_str());
+      return v;
+   }
+   else if (dataset == "amazing_file_1_10_10")
+   {
+      assert((alpha == -2 || alpha == 0 || alpha == 2) ||
+             !"alpha must be value in [-2, 0, 2]");
+
+      std::stringstream filepath_stream;
+      filepath_stream << ATTR_DATA_DIR << "/amazing_file_1_10_10_query_labels.txt";
       std::string filepath = filepath_stream.str();
 
       std::vector<std::vector<int>> v =

@@ -1,0 +1,4 @@
+,Genome,Reviews,Amazon,VariousImg,Music,BookReviews,Tiktok,Laion
+Avg_bottom-up (ms),312.11,27.35,151.35,5.74,156.63,150.80,31.34,58.40
+Avg_IntelELS (ms),85.74,3.98,85.25,4.57,25.27,28.23,20.92,2.96
+Ratio_of_Averages,3.64,6.86,1.78,1.26,6.20,5.34,1.50,19.75

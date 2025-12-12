@@ -1,0 +1,34 @@
+{
+    "experiments_B": [
+        {
+            "dataset": "goodreads_young",
+            
+            "index_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorResults/ACORN/goodreads_young/Index/N2388654_M32_gamma80_Mb64/acorn.index",
+            "input_base_labels_A_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/goodreads_young_A_base_labels.txt",
+            
+            "output_base_labels_B_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/goodreads_young_B_base_labels.txt",
+            "output_query_labels_B_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/query_B_4/goodreads_young_query_labels.txt",
+            "output_query_vectors_B_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/query_B_4/goodreads_young_query.fvecs",
+  
+            "target_label_length": 4,
+            "num_queries_to_generate": 100,
+            "num_neighbors_to_label": 1000,
+            "num_neighbors_to_find": 1000
+        },
+        {
+            "dataset": "goodreads_young",
+            
+            "index_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorResults/ACORN/goodreads_young/Index/N2388654_M32_gamma80_Mb64/acorn.index",
+            "input_base_labels_A_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/goodreads_young_A_base_labels.txt",
+            
+            "output_base_labels_B_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/goodreads_young_B_base_labels.txt",
+            "output_query_labels_B_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/query_B_5/goodreads_young_query_labels.txt",
+            "output_query_vectors_B_path": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/goodreads_young/query_B_5/goodreads_young_query.fvecs",
+  
+            "target_label_length": 5,
+            "num_queries_to_generate": 100,
+            "num_neighbors_to_label": 1000,
+            "num_neighbors_to_find": 1000
+        }
+    ]
+  }

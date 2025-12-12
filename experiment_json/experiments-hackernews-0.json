@@ -1,0 +1,44 @@
+{
+    "experiments": [
+       {
+          "dataset_name": "hackernews",
+          "shared_config": {
+             "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/hackernews",
+             "output_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorResults/",
+             "build_mode": "serial",
+             "max_degree": 32,
+             "Lbuild": 100,
+             "alpha": 1.2,
+             "num_cross_edges": 6,
+             "num_entry_points": 16,
+             "Lsearch_start": 25,
+             "Lsearch_end": 1000,
+             "Lsearch_step": 25,
+             "num_threads": 95,
+             "K": 10,
+             "num_repeats": 1,
+             "acorn_params": {
+                "N": 16500000,
+                "M": 32,
+                "M_beta": 64,
+                "gamma": 80,
+                "lsearch_threshold": 5000
+             }
+          },
+          "tasks": [
+             {
+                "query_dir_name": "query_C_D-weighted-sub-base-123456789",
+                "acorn_search_params": {
+                   "acorn_efs_start": 100,
+                   "acorn_efs_step_slow": 100,
+                   "acorn_efs_step_fast":100
+                },
+                "algorithms": [
+                   "ACORN-gamma",
+                   "ACORN-gamma-improve"
+                ]
+             }
+          ]
+       }
+    ]
+ }

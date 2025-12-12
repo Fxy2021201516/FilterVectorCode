@@ -1,0 +1,259 @@
+{
+   "query_tasks": [
+      {
+         "enabled": false,
+         "task_name": "analyze_A_queries",
+         "mode": "analyze_only",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "analysis_params": {
+            "analyze": true,
+            "candidate_file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/query_A_12/Laion_query_labels.txt",
+            "profiled_output": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/query_A_12/profiled_A_12.csv"
+         }
+      },
+      {
+         "enabled": false,
+         "task_name": "analyze_B_4_queries",
+         "mode": "analyze_only",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "analysis_params": {
+            "analyze": true,
+            "candidate_file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/query_B_4/Laion_query_labels.txt",
+            "profiled_output": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/query_B_4/profiled_B_4.csv"
+         }
+      },
+      {
+         "enabled": false,
+         "task_name": "analyze_B_5_queries",
+         "mode": "analyze_only",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "analysis_params": {
+            "analyze": true,
+            "candidate_file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/query_B_5/Laion_query_labels.txt",
+            "profiled_output": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/query_B_5/profiled_B_5.csv"
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=2",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 2,
+            "expected_num_label": 2
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 2,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=3",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 3,
+            "expected_num_label": 3
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 3,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=4",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 4,
+            "expected_num_label": 4
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 4,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=5",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 5,
+            "expected_num_label": 5
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 5,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=6",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 6,
+            "expected_num_label": 6
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 6,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=7",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 7,
+            "expected_num_label": 7
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 7,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=8",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 8,
+            "expected_num_label": 8
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 8,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      },
+      {
+         "enabled": true,
+         "task_name": "weighted_sub_base_l=9",
+         "mode": "weighted_sub_base",
+         "dataset": "Laion",
+         "data_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion",
+         "overwrite": true,
+         "generation_params": {
+            "num_points": 500,
+            "K": 10,
+            "distribution_type": "sub_base",
+            "truncate_to_fixed_length": true,
+            "num_labels_per_query": 9,
+            "expected_num_label": 9
+         },
+         "sub_base_params": {
+            "num_points": 500,
+            "query_length": 9,
+            "K": 10,
+            "min_children": 0,
+            "max_coverage": 10000000,
+            "cache-file": "/home/fengxiaoyao/1023FilterVector/FilterVectorData/Laion/sub_base_cache"
+         },
+         "analysis_params": {
+            "analyze": true
+         }
+      }
+   ]
+}

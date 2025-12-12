@@ -1,0 +1,249 @@
+{
+   "_comment": "这是适配sh脚本实验流程的配置文件",
+   "global_settings": {
+      "base_results_dir": "/home/fengxiaoyao/1023FilterVector/FilterVectorResults",
+      "attribute_data_root": "/home/fengxiaoyao/1023FilterVector/FilterVectorData"
+   },
+   "dataset_configurations": {
+      "BookReviews": {
+         "build_params": {
+            "_comment": "这些是全局默认构建参数，会被下面 experiment 中的同名参数覆盖",
+            "N": 2065775,
+            "max_degree": 32,
+            "Lbuild": 100,
+            "alpha": 1.2,
+            "num_cross_edges": 6,
+            "num_entry_points": 16,
+            "M": 32,
+            "gamma": 80,
+            "M_beta": 64
+         },
+         "structure_templates": {
+            "ung_index_handle": "M{max_degree}_LB{Lbuild}_alpha{alpha}_C{num_cross_edges}_EP{num_entry_points}_AN{N}_AM{M}_AMB{M_beta}_AG{gamma}",
+            "ung_gt_handle": "GT_{query_dir_path}_K{K}",
+            "search_params_handle": "Ls{lsearch_start}-Le{lsearch_end}-Lp{lsearch_step}_efsS{acorn_efs_start}-efss{acorn_efs_step_slow}-efsf{acorn_efs_step_fast}-lt{lsearch_threshold}_K{K}_th{threads}",
+            "result_dir_template": "{base_results_dir}/{dataset}/Results/{algorithm_name}/Index[{ung_index_handle}]_GT[{ung_gt_handle}]_Search[{search_params_handle}]",
+            "standalone_build_dir_template": "{base_results_dir}/{dataset}/Index/{ung_index_handle}",
+            "attribute_coverage_file": "{attribute_data_root}/{dataset}/{query_dir_path}/attribute_coverage_merged.csv"
+         },
+         "experiments": [
+            {
+               "enabled": true,
+               "name": "BookReviews_weighted_sub_base_123456789_K10_T100_ACORN-gamma",
+               "parameters": {
+                  "algorithm_name": "ACORN-gamma",
+                  "query_dir_path": "query_B_C_D-weighted-sub-base-123456789",
+                  "K": 10,
+                  "threads": 100,
+                  "max_degree": 32,
+                  "Lbuild": 100,
+                  "alpha": 1.2,
+                  "num_cross_edges": 6,
+                  "num_entry_points": 16,
+                  "lsearch_start": 500,
+                  "lsearch_end": 20000,
+                  "lsearch_step": 500,
+                  "acorn_efs_start": 200,
+                  "acorn_efs_step_slow": 200,
+                  "acorn_efs_step_fast": 200,
+                  "lsearch_threshold": 5000
+               },
+               "analysis_params": {
+                  "optimal_row_strategy": "default",
+                  "speedup_target_algorithm": "method3",
+                  "speedup_baseline_algorithms": [
+                     "UNG-nTfalse"
+                  ],
+                  "selection_ratios": [0.05,0.05,1],
+                  "enable_speedup_filter": true,
+                  "c_length_range": [2, 9],
+                  "c_ppass_filters": {
+                     "BookReviews": [20, 10000000]
+                  },
+                  "global_recall_filter": {
+                     "enabled": false,
+                     "min_recall": 0.8
+                  },
+                  "a_recall_filter": {
+                     "enabled": true,
+                     "algorithm_name": "ACORN-gamma",
+                     "min_recall": 0.9
+                  }
+               }
+            },
+            {
+               "enabled": true,
+               "name": "BookReviews_weighted_sub_base_123456789_K10_T100_ACORN-gamma-improved",
+               "parameters": {
+                  "algorithm_name": "ACORN-gamma-improved",
+                  "query_dir_path": "query_B_C_D-weighted-sub-base-123456789",
+                  "K": 10,
+                  "threads": 100,
+                  "max_degree": 32,
+                  "Lbuild": 100,
+                  "alpha": 1.2,
+                  "num_cross_edges": 6,
+                  "num_entry_points": 16,
+                  "lsearch_start": 500,
+                  "lsearch_end": 20000,
+                  "lsearch_step": 500,
+                  "acorn_efs_start": 200,
+                  "acorn_efs_step_slow": 200,
+                  "acorn_efs_step_fast": 200,
+                  "lsearch_threshold": 5000
+               }
+            },
+            {
+               "enabled": true,
+               "name": "BookReviews_weighted_sub_base_123456789_K10_T100_UNG-nTfalse",
+               "parameters": {
+                  "algorithm_name": "UNG-nTfalse",
+                  "query_dir_path": "query_B_C_D-weighted-sub-base-123456789",
+                  "K": 10,
+                  "threads": 100,
+                  "max_degree": 32,
+                  "Lbuild": 100,
+                  "alpha": 1.2,
+                  "num_cross_edges": 6,
+                  "num_entry_points": 16,
+                  "lsearch_start": 500,
+                  "lsearch_end": 20000,
+                  "lsearch_step": 500,
+                  "acorn_efs_start": 200,
+                  "acorn_efs_step_slow": 200,
+                  "acorn_efs_step_fast": 200,
+                  "lsearch_threshold": 5000
+               }
+            },
+            {
+               "enabled": true,
+               "name": "BookReviews_weighted_sub_base_123456789_K10_T100_UNG-nTtrue",
+               "parameters": {
+                  "algorithm_name": "UNG-nTtrue",
+                  "query_dir_path": "query_B_C_D-weighted-sub-base-123456789",
+                  "K": 10,
+                  "threads": 100,
+                  "max_degree": 32,
+                  "Lbuild": 100,
+                  "alpha": 1.2,
+                  "num_cross_edges": 6,
+                  "num_entry_points": 16,
+                  "lsearch_start": 500,
+                  "lsearch_end": 20000,
+                  "lsearch_step": 500,
+                  "acorn_efs_start": 200,
+                  "acorn_efs_step_slow": 200,
+                  "acorn_efs_step_fast": 200,
+                  "lsearch_threshold": 5000
+               }
+            },
+            {
+               "enabled": true,
+               "name": "BookReviews_weighted_sub_base_123456789_K10_T100_method1",
+               "parameters": {
+                  "algorithm_name": "method1",
+                  "query_dir_path": "query_B_C_D-weighted-sub-base-123456789",
+                  "K": 10,
+                  "threads": 100,
+                  "max_degree": 32,
+                  "Lbuild": 100,
+                  "alpha": 1.2,
+                  "num_cross_edges": 6,
+                  "num_entry_points": 16,
+                  "lsearch_start": 500,
+                  "lsearch_end": 20000,
+                  "lsearch_step": 500,
+                  "acorn_efs_start": 200,
+                  "acorn_efs_step_slow": 200,
+                  "acorn_efs_step_fast": 200,
+                  "lsearch_threshold": 5000
+               }
+            },
+            {
+               "enabled": true,
+               "name": "BookReviews_weighted_sub_base_123456789_K10_T100_method2",
+               "parameters": {
+                  "algorithm_name": "method2",
+                  "query_dir_path": "query_B_C_D-weighted-sub-base-123456789",
+                  "K": 10,
+                  "threads": 100,
+                  "max_degree": 32,
+                  "Lbuild": 100,
+                  "alpha": 1.2,
+                  "num_cross_edges": 6,
+                  "num_entry_points": 16,
+                  "lsearch_start": 500,
+                  "lsearch_end": 20000,
+                  "lsearch_step": 500,
+                  "acorn_efs_start": 200,
+                  "acorn_efs_step_slow": 200,
+                  "acorn_efs_step_fast": 200,
+                  "lsearch_threshold": 5000
+               }
+            },
+            {
+               "enabled": true,
+               "name": "BookReviews_weighted_sub_base_123456789_K10_T100_method3",
+               "parameters": {
+                  "algorithm_name": "method3",
+                  "query_dir_path": "query_B_C_D-weighted-sub-base-123456789",
+                  "K": 10,
+                  "threads": 100,
+                  "max_degree": 32,
+                  "Lbuild": 100,
+                  "alpha": 1.2,
+                  "num_cross_edges": 6,
+                  "num_entry_points": 16,
+                  "lsearch_start": 500,
+                  "lsearch_end": 20000,
+                  "lsearch_step": 500,
+                  "acorn_efs_start": 200,
+                  "acorn_efs_step_slow": 200,
+                  "acorn_efs_step_fast": 200,
+                  "lsearch_threshold": 5000
+               }
+            }
+         ]
+      }
+   },
+   "global_comparison_tasks": {
+      "qps_recall_plots": [
+         {
+            "enabled": true,
+            "task_name": "BookReviews_weighted_sub_base_123456789_K10_Comparison",
+            "output_filename": "BookReviews_weighted_sub_base_123456789_K10_comparison_new.png",
+            "title": "QPS-Recall Comparison",
+            "items_to_compare": [
+               {
+                  "dataset": "BookReviews",
+                  "experiment_name": "BookReviews_weighted_sub_base_123456789_K10_T100_ACORN-gamma"
+               },
+               {
+                  "dataset": "BookReviews",
+                  "experiment_name": "BookReviews_weighted_sub_base_123456789_K10_T100_ACORN-gamma-improved"
+               },
+               {
+                  "dataset": "BookReviews",
+                  "experiment_name": "BookReviews_weighted_sub_base_123456789_K10_T100_UNG-nTfalse"
+               },
+               {
+                  "dataset": "BookReviews",
+                  "experiment_name": "BookReviews_weighted_sub_base_123456789_K10_T100_UNG-nTtrue"
+               },
+               {
+                  "dataset": "BookReviews",
+                  "experiment_name": "BookReviews_weighted_sub_base_123456789_K10_T100_method1"
+               },
+               {
+                  "dataset": "BookReviews",
+                  "experiment_name": "BookReviews_weighted_sub_base_123456789_K10_T100_method2"
+               },
+               {
+                  "dataset": "BookReviews",
+                  "experiment_name": "BookReviews_weighted_sub_base_123456789_K10_T100_method3"
+               }
+            ]
+         }
+      ]
+   }
+}
